@@ -41,6 +41,7 @@
   --icon-bills: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1z'/%3E%3Cpath d='M8 8h8M8 12h8M8 16h5'/%3E%3C/svg%3E");
   --icon-goals: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Ccircle cx='12' cy='12' r='6'/%3E%3Ccircle cx='12' cy='12' r='2'/%3E%3C/svg%3E");
   --icon-more: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='3' width='7' height='7' rx='1.5'/%3E%3Crect x='14' y='3' width='7' height='7' rx='1.5'/%3E%3Crect x='3' y='14' width='7' height='7' rx='1.5'/%3E%3Crect x='14' y='14' width='7' height='7' rx='1.5'/%3E%3C/svg%3E");
+  --logo: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2064%2064'%3E%3Cdefs%3E%3ClinearGradient%20id='g'%20x1='0'%20y1='0'%20x2='1'%20y2='1'%3E%3Cstop%20offset='0'%20stop-color='%231b6f67'/%3E%3Cstop%20offset='1'%20stop-color='%2310443f'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20width='64'%20height='64'%20rx='16'%20fill='url(%23g)'/%3E%3Cpath%20d='M17%2046V20l15%2017%2015-17v26'%20fill='none'%20stroke='%23f6f4ee'%20stroke-width='5.5'%20stroke-linecap='round'%20stroke-linejoin='round'/%3E%3Ccircle%20cx='32'%20cy='26.5'%20r='3.8'%20fill='%23d9925a'/%3E%3C/svg%3E");
   --icon-brand: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6L9 17l-5-5'/%3E%3C/svg%3E");
 }
 
@@ -1235,8 +1236,8 @@ dialog::backdrop {
     width: 36px;
     height: 36px;
     border-radius: 11px;
-    background: var(--teal-700) var(--icon-brand) center / 20px no-repeat;
-    box-shadow: 0 4px 10px rgba(27, 111, 103, 0.3);
+    background: var(--logo) center / 100% 100% no-repeat;
+    box-shadow: 0 4px 10px rgba(16, 68, 63, 0.28);
   }
 
   #main-nav .nav-tagline {
@@ -1397,25 +1398,27 @@ dialog::backdrop {
   }
 }
 
-/* ---------- 17. First-time setup ---------- */
+/* ---------- 17. First-time setup (compact, fits common phones) ---------- */
 body.setup-active #main-nav,
-body.setup-active #app {
+body.setup-active #app,
+body.setup-active .mobile-header {
   display: none !important;
 }
 
 .setup-screen {
   display: flex;
   justify-content: center;
-  align-items: flex-start;
+  align-items: center;
   min-height: 100vh;
-  padding: 1.5rem 1rem 3rem;
+  min-height: 100dvh;
+  padding: 1rem 0.85rem;
   background: var(--bg);
 }
 
 .setup-card {
   width: 100%;
-  max-width: 520px;
-  padding: 2rem 1.5rem;
+  max-width: 460px;
+  padding: 1.5rem 1.4rem 1.25rem;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -1423,27 +1426,41 @@ body.setup-active #app {
 }
 
 .setup-brand {
-  width: 48px;
-  height: 48px;
-  margin-bottom: 1rem;
-  border-radius: 14px;
-  background: var(--teal-700) var(--icon-brand) center / 26px no-repeat;
-  box-shadow: 0 4px 10px rgba(27, 111, 103, 0.3);
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 0.75rem;
+  border-radius: 16px;
+  background: var(--logo) center / 100% 100% no-repeat;
+  box-shadow: 0 6px 14px rgba(16, 68, 63, 0.28);
 }
 
 .setup-card h1 {
-  margin-bottom: 0.5rem;
-  font-size: 1.75rem;
+  margin-bottom: 0.2rem;
+  font-size: 1.55rem;
+  text-align: center;
 }
 
 .setup-lead {
-  margin: 0 0 1.25rem;
+  margin: 0 0 1rem;
+  text-align: center;
   color: var(--ink-soft);
 }
 
+.setup-card .field { margin-bottom: 0.7rem; }
+
+.setup-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.7rem;
+}
+
+.setup-row .field { min-width: 0; }
+
+.setup-hint { margin: -0.2rem 0 0.8rem; font-size: 0.8rem; }
+
 .setup-optional {
-  margin-bottom: 1rem;
-  padding: 0.85rem 1rem;
+  margin-bottom: 0.9rem;
+  padding: 0.65rem 0.9rem;
   background: var(--teal-50);
   border: 1px solid var(--teal-100);
   border-radius: var(--radius-sm);
@@ -1455,23 +1472,100 @@ body.setup-active #app {
   color: var(--teal-900);
 }
 
-.setup-optional-body {
-  margin-top: 1rem;
-}
+.setup-optional-body { margin-top: 0.8rem; }
 
 .setup-actions {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
+  flex-direction: column;
+  gap: 0.5rem;
 }
+
+.setup-actions .btn { width: 100%; }
+.setup-actions .btn-primary { min-height: 3rem; font-size: 1.05rem; }
 
 .setup-privacy {
-  margin: 1.25rem 0 0;
+  margin: 0.9rem 0 0;
+  text-align: center;
   color: var(--ink-soft);
-  font-size: 0.9rem;
+  font-size: 0.8rem;
 }
 
-@media (max-width: 480px) {
-  .setup-card { padding: 1.5rem 1.1rem; }
-  .setup-actions .btn { flex: 1 1 100%; }
+@media (max-height: 700px) {
+  .setup-brand { width: 44px; height: 44px; margin-bottom: 0.5rem; }
+  .setup-card { padding: 1.1rem 1.1rem 1rem; }
+  .setup-card h1 { font-size: 1.35rem; }
+  .setup-lead { margin-bottom: 0.7rem; }
+  .setup-privacy { display: none; }
+}
+
+@media (max-width: 360px) {
+  .setup-row { grid-template-columns: 1fr; }
+}
+
+/* ---------- 18. Monetra identity, mobile header, small-screen polish ---------- */
+body { overflow-x: clip; }
+#app, .card { min-width: 0; max-width: 100%; }
+input, select, textarea { max-width: 100%; }
+
+.mobile-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: calc(0.55rem + env(safe-area-inset-top, 0px)) 1rem 0.55rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.mobile-logo {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: var(--logo) center / 100% 100% no-repeat;
+}
+
+.mobile-name {
+  font-family: var(--font-head);
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--teal-900);
+}
+
+@media (min-width: 768px) {
+  .mobile-header { display: none; }
+}
+
+/* Safe to Spend first, then ONE panel: Total Left This Period with Days Left below it */
+@media (max-width: 599px) {
+  .safe-stats {
+    display: block;
+    padding: 0.2rem 0.95rem;
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: var(--radius-sm);
+  }
+
+  .safe-stats > div {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.75rem;
+    padding: 0.8rem 0;
+    background: none;
+    border-radius: 0;
+  }
+
+  .safe-stats > div + div { border-top: 1px solid rgba(255, 255, 255, 0.2); }
+  .safe-stats span { font-size: 0.95rem; }
+  .safe-stats strong { text-align: right; font-size: 1.2rem; white-space: nowrap; overflow-wrap: normal; }
+  .safe-stats span { min-width: 0; }
+  #safe-to-spend-note { font-size: 0.95rem; line-height: 1.45; }
+}
+
+@media (max-width: 380px) {
+  #app { padding-left: 0.65rem; padding-right: 0.65rem; }
+  .summary-row strong { font-size: 0.95rem; overflow-wrap: anywhere; }
+  .quick-actions { gap: 0.5rem; }
+  .card-head { flex-wrap: wrap; gap: 0.5rem; }
+  #main-nav a { font-size: 0.68rem; }
 }
