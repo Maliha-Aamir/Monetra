@@ -1,5 +1,5 @@
 /* =========================================================
-   CALM BUDGET - script.js
+   MONETRA - script.js
    Navigation, storage, forms, calculations, dashboard,
    recurring entries, safe deletion with confirmation and Undo,
    record relationships, duplicate income warnings, CSV export,
@@ -501,6 +501,12 @@
       }
       // Data saved before first-time setup existed belongs to an existing user: skip setup
       if (typeof parsed.setupCompleted !== "boolean") {
+        parsed.setupCompleted = true;
+      }
+      // Anyone who already has saved records is a returning user: never show setup to them
+      if (parsed.setupCompleted !== true && ["transactions", "bills", "goals", "budgets", "recurring"].some(function (k) {
+        return Array.isArray(parsed[k]) && parsed[k].length > 0;
+      })) {
         parsed.setupCompleted = true;
       }
       return { status: "ok", value: normalizeData(parsed) };
@@ -2488,7 +2494,6 @@
     $("setup-error").hidden = true;
     $("setup-storage-warning").hidden = storageWorks;
     window.scrollTo(0, 0);
-    setTimeout(function () { $("setup-currency").focus(); }, 30);
   }
 
   function completeSetup(withEntries) {
@@ -2579,12 +2584,12 @@
         if (String(typed || "").trim().toUpperCase() !== "RESET") {
           return "Please type RESET to confirm.";
         }
-        var fresh = createDefaultData();
-        fresh.setupCompleted = true;   // setup is never shown again after it was completed
+        var fresh = createDefaultData();   // setupCompleted is false, so onboarding shows again
         data = normalizeData(fresh);
         hideToast();
         fillSettingsForm();
         commit("All data has been reset.");
+        applySetupState();
         return null;
       }
     });
@@ -2705,7 +2710,7 @@
           restored = null;
         }
         if (!restored) {
-          showToast("This file is not a valid Calm Budget backup, so nothing was changed.");
+          showToast("This file is not a valid Monetra backup, so nothing was changed.");
           return;
         }
         if (!window.confirm("Restore this backup? It will replace ALL the data currently in this app. This cannot be undone.")) {
