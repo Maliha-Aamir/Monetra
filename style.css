@@ -1586,3 +1586,15 @@ body.focus-mode #home-goals, body.focus-mode #home-budgets, body.focus-mode #mon
 .inline-cat input { margin: 0; }
 .inline-cat .btn { flex: none; }
 #categories-section .button-row { margin: 0 0 0.5rem; }
+
+/* ---------- 21. Expense rows that expand, spending progress ---------- */
+.row-fold { padding: 0.7rem 0; border-bottom: 1px solid var(--border); }
+.row-fold:last-child { border-bottom: none; }
+.row-fold > summary { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; cursor: pointer; list-style: none; }
+.row-fold > summary::-webkit-details-marker { display: none; }
+.row-fold > summary::after { content: "\25BE"; margin-left: 0.25rem; color: var(--ink-soft); }
+.row-fold[open] > summary::after { content: "\25B4"; }
+.row-fold > summary .row-title { flex: 1; min-width: 0; }
+.row-fold .row-sub { margin-top: 0.35rem; }
+.fold-actions { margin: 0.25rem 0 0 -0.4rem; }
+#summary-progress .field-hint { margin: 0.8rem 0 0.35rem; }
