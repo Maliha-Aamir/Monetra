@@ -2473,10 +2473,29 @@
     return false;
   }
 
-  // Shows the setup screen only while data.setupCompleted is not true
+  // One rule decides everything: setup is needed until data.setupCompleted is true.
+  // Brand-new data starts with false. Existing users' data is marked true when it is loaded.
+  function needsSetup() {
+    return !!data && data.setupCompleted !== true;
+  }
+
+  // Opens the Home (Dashboard) page, whatever page the address bar was on before
+  function openDashboard() {
+    try {
+      if (window.location.hash !== "#home") {
+        window.history.replaceState(null, "", "#home");
+      }
+    } catch (error) {
+      window.location.hash = "home";
+    }
+    showPage("home");
+    window.scrollTo(0, 0);
+  }
+
+  // Shows the setup screen only while needsSetup() is true
   function applySetupState() {
     var screen = $("setup-screen");
-    var needs = !!data && data.setupCompleted !== true;
+    var needs = needsSetup();
     var wasHidden = screen.hidden;
     document.body.classList.toggle("setup-active", needs);
     screen.hidden = !needs;
@@ -2494,6 +2513,9 @@
     $("setup-error").hidden = true;
     $("setup-storage-warning").hidden = storageWorks;
     window.scrollTo(0, 0);
+    setTimeout(function () {
+      if (needsSetup() && $("setup-name")) { $("setup-name").focus({ preventScroll: true }); }
+    }, 50);
   }
 
   function completeSetup(withEntries) {
@@ -2540,13 +2562,13 @@
     if (expenseCents !== null) {
       data.transactions.push({ id: uid(), type: "expense", amount: expenseCents, categoryId: categoryId, date: today, method: "Cash", createdAt: Date.now() });
     }
-    data.setupCompleted = true;
+    data.setupCompleted = true;             // saved to Local Storage by commit() below
 
     $("setup-error").hidden = true;
     fillSettingsForm();
     commit("You're all set. Welcome to Monetra!");
     applySetupState();
-    window.scrollTo(0, 0);
+    openDashboard();
   }
 
   function setupFirstRun() {
@@ -2871,42 +2893,47 @@
      24. START
      --------------------------------------------------------- */
   function init() {
-    storageWorks = checkStorageWorks();
+    try {
+      storageWorks = checkStorageWorks();
 
-    if (!storageWorks) {
-      data = normalizeData(createDefaultData());
-      showBanner(
-        "storage-banner",
-        "Your browser is blocking storage, so your data will not be saved after you close this page."
-      );
-    } else {
-      removeLegacyKeys();
-      data = loadPersonalData();
+      if (!storageWorks) {
+        data = normalizeData(createDefaultData());
+        showBanner(
+          "storage-banner",
+          "Your browser is blocking storage, so your data will not be saved after you close this page."
+        );
+      } else {
+        removeLegacyKeys();
+        data = loadPersonalData();
+      }
+
+      processRecurring();
+      if (storageWorks) {
+        saveData();
+      }
+
+      setupSettings();
+      fillSettingsForm();
+      setupFormEvents();
+      setupConfirmEvents();
+      setupRestore();
+      setupClicks();
+      setupNavigation();
+      setupFirstRun();   // decides: Setup screen for new users, Dashboard for returning users
+      renderAll();
+
+      if (migrationNotes.length) {
+        showToast("Data check: " + migrationNotes.join(" ") + " No records were deleted.");
+      }
+
+      // If the app stays open past midnight, refresh the day-based numbers
+      setInterval(function () {
+        if (data && todayStr() !== lastRenderDay) { refreshDay(); }
+      }, 60000);
+    } finally {
+      // The page was hidden by index.html until now. Always show it, even after an error.
+      document.documentElement.classList.remove("booting");
     }
-
-    processRecurring();
-    if (storageWorks) {
-      saveData();
-    }
-
-    setupSettings();
-    fillSettingsForm();
-    setupFormEvents();
-    setupConfirmEvents();
-    setupRestore();
-    setupClicks();
-    setupNavigation();
-    setupFirstRun();
-    renderAll();
-
-    if (migrationNotes.length) {
-      showToast("Data check: " + migrationNotes.join(" ") + " No records were deleted.");
-    }
-
-    // If the app stays open past midnight, refresh the day-based numbers
-    setInterval(function () {
-      if (data && todayStr() !== lastRenderDay) { refreshDay(); }
-    }, 60000);
   }
 
   init();
