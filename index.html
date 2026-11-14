@@ -147,10 +147,11 @@
         <h2>This Month</h2>
         <p id="period-label" class="period-label"></p>
         <div class="summary-row">
-          <div><span>Income</span><strong id="summary-income">--</strong></div>
-          <div><span>Spent</span><strong id="summary-spent">--</strong></div>
-          <div><span>Left</span><strong id="summary-left">--</strong></div>
+          <div><span>Total Income</span><strong id="summary-income">--</strong></div>
+          <div><span>Total Spent</span><strong id="summary-spent">--</strong></div>
+          <div><span>Remaining</span><strong id="summary-left">--</strong></div>
         </div>
+        <div id="summary-progress"></div>
       </div>
 
       <div id="upcoming-bills" class="card">
@@ -188,18 +189,6 @@
           <button type="button" class="btn btn-add btn-small" data-action="add-expense">Add Expense</button>
         </div>
         <div id="expenses-list"></div>
-      </div>
-
-      <div id="recurring-section" class="card">
-        <div class="card-head">
-          <h2>Recurring</h2>
-          <div class="card-actions">
-            <button type="button" class="btn btn-add btn-small" data-action="add-recurring-income">Recurring Income</button>
-            <button type="button" class="btn btn-add btn-small" data-action="add-recurring-expense">Recurring Expense</button>
-          </div>
-        </div>
-        <p class="muted">A recurring entry adds a real income or expense on each date. Pause it any time.</p>
-        <div id="recurring-list"></div>
       </div>
 
       <div id="history-section" class="card">
@@ -257,7 +246,10 @@
           <h2>Category Budgets</h2>
           <button type="button" class="btn btn-add btn-small" data-action="add-budget">Add Budget</button>
         </div>
-        <div id="budgets-list"></div>
+        <details class="collapse" open>
+          <summary><h2>Category budgets</h2></summary>
+          <div class="collapse-body"><div id="budgets-list"></div></div>
+        </details>
       </div>
 
       <div id="review-section" class="card">
@@ -279,7 +271,7 @@
 
       <div id="categories-section" class="card">
         <details class="collapse">
-          <summary><h2>Categories</h2></summary>
+          <summary><h2>Manage Categories</h2></summary>
           <div class="collapse-body">
             <div class="button-row"><button type="button" class="btn btn-add btn-small btn-secondary" data-action="add-category">Add Category</button></div>
             <div id="categories-list"></div>
@@ -354,6 +346,16 @@
             <button type="submit" class="btn btn-primary">Save Settings</button>
           </form>
         </div>
+      </div>
+
+      <div id="recurring-section" class="card">
+        <details class="collapse">
+          <summary><h2>Manage Recurring</h2></summary>
+          <div class="collapse-body">
+            <p class="muted">A recurring entry adds a real income or expense on each date. Pause it any time. Add one with the Repeat option when you record income or an expense.</p>
+            <div id="recurring-list"></div>
+          </div>
+        </details>
       </div>
 
       <div id="export-section" class="card">
