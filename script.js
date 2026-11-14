@@ -483,6 +483,35 @@
     }
   }
 
+  /* True only for saved data that holds nothing of the user's: no records, no name,
+     default settings and default (or no) categories. Such data comes from an older
+     version of the app that was opened once and never used. It is safe to show the
+     Welcome screen for it, and nothing is deleted. Any real data returns false. */
+  function isUntouchedData(p) {
+    var lists = ["transactions", "bills", "goals", "budgets", "recurring"];
+    for (var i = 0; i < lists.length; i++) {
+      var list = p[lists[i]];
+      if (list !== undefined && (!Array.isArray(list) || list.length > 0)) { return false; }
+    }
+    if (p.settings !== undefined) {
+      if (!isPlainObject(p.settings)) { return false; }
+      var s = p.settings;
+      if (s.name !== undefined && String(s.name).trim() !== "") { return false; }
+      if (s.currency !== undefined && s.currency !== "USD") { return false; }
+      if (s.monthStartDay !== undefined && parseInt(s.monthStartDay, 10) !== 1) { return false; }
+    }
+    if (p.categories !== undefined) {
+      if (!Array.isArray(p.categories)) { return false; }
+      if (p.categories.length > 0) {
+        if (p.categories.length !== DEFAULT_CATEGORIES.length) { return false; }
+        for (var j = 0; j < p.categories.length; j++) {
+          if (!isPlainObject(p.categories[j]) || DEFAULT_CATEGORIES.indexOf(p.categories[j].name) === -1) { return false; }
+        }
+      }
+    }
+    return true;
+  }
+
   function loadFromKey(key) {
     var raw = null;
     try {
@@ -499,9 +528,10 @@
       if (!isPlainObject(parsed) || typeof parsed.version !== "number" || parsed.version > DATA_VERSION) {
         throw new Error("Unexpected data format");
       }
-      // Data saved before first-time setup existed belongs to an existing user: skip setup
+      // Data saved before first-time setup existed: a real existing user skips setup,
+      // but an untouched empty app (nothing entered, nothing changed) still gets the Welcome screen.
       if (typeof parsed.setupCompleted !== "boolean") {
-        parsed.setupCompleted = true;
+        parsed.setupCompleted = !isUntouchedData(parsed);
       }
       // Anyone who already has saved records is a returning user: never show setup to them
       if (parsed.setupCompleted !== true && ["transactions", "bills", "goals", "budgets", "recurring"].some(function (k) {
