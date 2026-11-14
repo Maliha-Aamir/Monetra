@@ -303,7 +303,7 @@
       createdAt: new Date().toISOString(),
       categoriesSeeded: false,
       setupCompleted: false,
-      settings: { name: "", currency: "USD", monthStartDay: 1 },
+      settings: { name: "", currency: "USD", monthStartDay: 1, focusMode: false, largeText: false, reducedMotion: null },
       categories: [],
       transactions: [],
       bills: [],
@@ -421,6 +421,9 @@
     if (!(s.monthStartDay >= 1 && s.monthStartDay <= 28)) {
       s.monthStartDay = 1;
     }
+    s.focusMode = s.focusMode === true;
+    s.largeText = s.largeText === true;
+    if (typeof s.reducedMotion !== "boolean") { s.reducedMotion = null; }
     d.goals.forEach(function (g) {
       if (!Array.isArray(g.contributions)) {
         g.contributions = [];
@@ -899,7 +902,7 @@
     }
     var diff = daysBetween(today, b.dueDate);
     if (diff < 0) {
-      return { label: "Overdue by " + plural(-diff, "day"), cls: "badge-over" };
+      return { label: "Past due by " + plural(-diff, "day"), cls: "badge-over" };
     }
     if (diff === 0) {
       return { label: "Due today", cls: "badge-warn" };
@@ -920,7 +923,26 @@
     return name ? part + ", " + name + ". Manage Money. Find Your Focus." : "Manage Money. Find Your Focus.";
   }
 
+  // Calm reminders for unpaid bills. Shown only while the app is open.
+  function renderReminders(stats) {
+    var over = [];
+    var due = [];
+    var soon = [];
+    data.bills.forEach(function (b) {
+      if (b.paid) { return; }
+      var d = daysBetween(stats.today, b.dueDate);
+      if (d < 0) { over.push(b.name); } else if (d === 0) { due.push(b.name); } else if (d <= 3) { soon.push(b.name); }
+    });
+    var lines = [];
+    if (over.length) { lines.push("Past due: " + over.join(", ") + ". Paying these first keeps things simple."); }
+    if (due.length) { lines.push("Due today: " + due.join(", ") + "."); }
+    if (soon.length) { lines.push("Coming up in the next 3 days: " + soon.join(", ") + "."); }
+    $("reminders").innerHTML = lines.map(function (l) { return "<p>" + esc(l) + "</p>"; }).join("");
+    $("reminders").hidden = lines.length === 0;
+  }
+
   function renderHome(stats) {
+    renderReminders(stats);
     $("home-greeting").textContent = greetingText();
 
     $("safe-to-spend-amount").textContent = formatMoney(stats.safePerDay);
@@ -939,6 +961,10 @@
       note = "Spread evenly over the rest of this budget period, today included.";
     }
     $("safe-to-spend-note").textContent = note;
+    if (!hasActivity) {
+      $("safe-to-spend-amount").textContent = "--";
+      $("safe-to-spend-total").textContent = "--";
+    }
 
     $("safe-to-spend-breakdown").innerHTML =
       '<div class="breakdown-row"><span>Income received</span><span>+' + formatMoney(stats.income) + "</span></div>" +
@@ -1008,6 +1034,12 @@
   /* ---------------------------------------------------------
      12. RENDER: MONEY (Income, Expenses, Recurring, History)
      --------------------------------------------------------- */
+  function emptyAddBtn(type) {
+    var any = data.transactions.some(function (t) { return t.type === type; });
+    return btn((any ? "Add " : "Add First ") + (type === "income" ? "Income" : "Expense"),
+      type === "income" ? "add-income" : "add-expense", "btn-add btn-small btn-secondary");
+  }
+
   function renderPeriodList(type, stats) {
     var rows = data.transactions.filter(function (t) {
       return t.type === type && t.date >= stats.period.start && t.date <= stats.period.end && t.date <= stats.today;
@@ -1020,8 +1052,9 @@
       return emptyState(
         "No " + label + " this period yet",
         type === "income"
-          ? "Tap + Add Income above to record money you received."
-          : "Tap + Add Expense above to record what you spent."
+          ? "Record money you received and it will show up here."
+          : "Record what you spent and it will show up here.",
+        emptyAddBtn(type)
       );
     }
 
@@ -1086,6 +1119,7 @@
     var category = $("history-category").value;
     var from = $("history-from").value;
     var to = $("history-to").value;
+    var month = $("history-month").value;
 
     if (data.transactions.length === 0) {
       $("history-list").innerHTML = emptyState(
@@ -1100,6 +1134,7 @@
       if (category && t.categoryId !== category) { return false; }
       if (from && t.date < from) { return false; }
       if (to && t.date > to) { return false; }
+      if (month && t.date.slice(0, 7) !== month) { return false; }
       if (query) {
         var haystack = [
           transactionTitle(t), t.method,
@@ -1155,59 +1190,68 @@
     return { label: "On track", cls: "badge-ok" };
   }
 
+  function sumPeriod(from, to) {
+    var r = { income: 0, spent: 0, count: 0, byCat: {} };
+    data.transactions.forEach(function (t) {
+      if (t.date < from || t.date > to) { return; }
+      if (t.type === "income") { r.income += t.amount; return; }
+      r.spent += t.amount;
+      r.count += 1;
+      r.byCat[t.categoryId] = (r.byCat[t.categoryId] || 0) + t.amount;
+    });
+    return r;
+  }
+
   function renderReview(stats) {
     $("review-period").textContent = "Budget period: " + formatPeriod(stats.period);
-
-    if (stats.budgets.length === 0) {
+    var cur = sumPeriod(stats.period.start, stats.today);
+    if (cur.income === 0 && cur.spent === 0) {
       $("review-content").innerHTML = emptyState(
         "Nothing to review yet",
-        "Add a category budget and your monthly review will appear here."
+        "Add income or expenses and your spending overview will appear here.",
+        btn("Add First Expense", "add-expense", "btn-add btn-small btn-secondary")
       );
       return;
     }
-
-    var planned = 0;
-    var spent = 0;
-    var exceeded = [];
-    var within = [];
-    stats.budgets.forEach(function (b) {
-      planned += b.limit;
-      spent += b.spent;
-      if (b.spent > b.limit) { exceeded.push(b); } else { within.push(b); }
+    var remaining = cur.income - cur.spent;
+    var topId = null;
+    Object.keys(cur.byCat).forEach(function (id) {
+      if (topId === null || cur.byCat[id] > cur.byCat[topId]) { topId = id; }
     });
-    exceeded.sort(function (a, b) { return (b.spent - b.limit) - (a.spent - a.limit); });
-    within.sort(function (a, b) { return b.pct - a.pct; });
-    var remaining = planned - spent;
+    var planned = 0;
+    var budgeted = 0;
+    stats.budgets.forEach(function (b) { planned += b.limit; budgeted += b.spent; });
 
-    var html = '<div class="summary-row">' +
-      "<div><span>Planned</span><strong>" + formatMoney(planned) + "</strong></div>" +
-      "<div><span>Spent</span><strong>" + formatMoney(spent) + "</strong></div>" +
-      '<div class="' + (remaining < 0 ? "is-negative" : "") + '"><span>' + (remaining < 0 ? "Over by" : "Remaining") +
-      "</span><strong>" + formatMoney(Math.abs(remaining)) + "</strong></div></div>" +
-      '<p class="field-hint">Spent counts only the categories that have a budget.</p>';
+    var html = '<p class="review-lead">Your spending overview is ready.</p>' +
+      '<div class="summary-row">' +
+      "<div><span>Income</span><strong>" + formatMoney(cur.income) + "</strong></div>" +
+      "<div><span>Spending</span><strong>" + formatMoney(cur.spent) + "</strong></div>" +
+      '<div class="' + (remaining < 0 ? "is-negative" : "") + '"><span>' + (remaining < 0 ? "Beyond income" : "Remaining") +
+      "</span><strong>" + formatMoney(Math.abs(remaining)) + "</strong></div></div>";
 
-    html += '<p class="review-group-title">Over the limit (' + exceeded.length + ")</p>";
-    if (exceeded.length === 0) {
-      html += '<p class="muted">No category went over its limit. Nicely done.</p>';
-    } else {
-      html += exceeded.map(function (b) {
-        return '<div class="row"><div class="row-main"><div class="row-title">' + esc(b.name) + "</div>" +
-          '<div class="row-sub">' + formatMoney(b.spent) + " of " + formatMoney(b.limit) + "</div></div>" +
-          '<span class="badge badge-over">Over by ' + formatMoney(b.spent - b.limit) + "</span></div>";
-      }).join("");
+    if (topId !== null && cur.spent > 0) {
+      html += '<p class="review-line">Here\'s where your money went. Most of it went to <strong>' + esc(categoryName(topId)) +
+        "</strong>: " + formatMoney(cur.byCat[topId]) + " (" + Math.round(cur.byCat[topId] / cur.spent * 100) + "% of your spending).</p>";
+    }
+    if (planned > 0) {
+      var pct = budgeted / planned * 100;
+      html += '<p class="review-line">Budget usage: <strong>' + Math.round(pct) + "%</strong> (" + formatMoney(budgeted) +
+        " of " + formatMoney(planned) + " in budgeted categories)</p>" + progressHTML(pct, pct >= 100 ? "over" : pct >= 80 ? "warn" : "");
     }
 
-    html += '<p class="review-group-title">Within the limit (' + within.length + ")</p>";
-    if (within.length === 0) {
-      html += '<p class="muted">No category is within its limit right now.</p>';
-    } else {
-      html += within.map(function (b) {
-        return '<div class="row"><div class="row-main"><div class="row-title">' + esc(b.name) + "</div>" +
-          '<div class="row-sub">' + formatMoney(b.spent) + " of " + formatMoney(b.limit) + "</div></div>" +
-          '<span class="badge badge-ok">' + formatMoney(b.remaining) + " left</span></div>";
-      }).join("");
+    // Compare with the same number of days last period, and only when both periods have expenses
+    var prev = getPeriod(addDays(stats.period.start, -1), data.settings.monthStartDay);
+    var prevTo = addDays(prev.start, daysBetween(stats.period.start, stats.today));
+    if (prevTo > prev.end) { prevTo = prev.end; }
+    var before = sumPeriod(prev.start, prevTo);
+    if (before.count > 0 && cur.count > 0) {
+      var diff = cur.spent - before.spent;
+      html += '<p class="review-line">' + (diff < 0
+        ? "You're making progress: " + formatMoney(-diff) + " less spent than over the same days last period."
+        : diff > 0
+          ? "Spending is " + formatMoney(diff) + " higher than over the same days last period. No pressure, this is just your overview."
+          : "Spending matches the same days last period.") + "</p>";
     }
-
     $("review-content").innerHTML = html;
   }
 
@@ -1217,7 +1261,8 @@
     if (stats.budgets.length === 0) {
       $("budgets-list").innerHTML = emptyState(
         "No category budgets yet",
-        "Tap + Add Budget, pick a category and set a monthly limit."
+        "A budget is a monthly limit for one category, so you can see what is left.",
+        btn("Create Budget", "add-budget", "btn-add btn-small btn-secondary")
       );
       $("alerts-list").innerHTML = emptyState("No alerts", "Alerts appear here when a budget reaches 80% or 100%.");
       return;
@@ -1250,11 +1295,11 @@
       $("alerts-list").innerHTML = alerts.map(function (b) {
         var text;
         if (b.remaining < 0) {
-          text = b.name + " is over its budget by " + formatMoney(-b.remaining) + ". A lighter week could help.";
+          text = b.name + " has gone past its budget by " + formatMoney(-b.remaining) + ". You can raise the limit if it was too tight.";
         } else if (b.status === "over") {
-          text = b.name + " has reached its budget limit.";
+          text = "You have reached your limit for " + b.name + ".";
         } else {
-          text = b.name + " is at " + Math.round(b.pct) + "% of its budget. Heads up, maybe slow down a little.";
+          text = b.name + " is at " + Math.round(b.pct) + "% of its budget. A gentle heads up, most of it is used.";
         }
         return '<div class="alert-item ' + (b.status === "over" ? "alert-over" : "alert-warn") + '">' + esc(text) + "</div>";
       }).join("");
@@ -1268,7 +1313,8 @@
     if (data.bills.length === 0) {
       $("bills-list").innerHTML = emptyState(
         "No bills or subscriptions yet",
-        "Tap + Add Bill to track due dates and mark bills as paid."
+        "Bills and subscriptions repeat. Add one to see it before it is due.",
+        btn("Add First Bill", "add-bill", "btn-add btn-small btn-secondary")
       );
       return;
     }
@@ -1302,7 +1348,8 @@
     if (data.goals.length === 0) {
       $("goals-list").innerHTML = emptyState(
         "No savings goals yet",
-        "Tap + Add Goal. One small goal is a great start."
+        "A savings goal tracks money you are setting aside. One small goal is a great start.",
+        btn("Add First Goal", "add-goal", "btn-add btn-small btn-secondary")
       );
       return;
     }
@@ -1368,8 +1415,24 @@
     $("settings-day").value = String(data.settings.monthStartDay);
   }
 
+  // Applies Focus Mode, Larger Text and Reduced Motion. Reduced Motion follows the device until the user chooses.
+  function applyPreferences() {
+    var st = data.settings;
+    var root = document.documentElement;
+    var osReduce = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+    root.classList.toggle("large-text", st.largeText);
+    root.classList.toggle("reduce-motion", st.reducedMotion === null ? osReduce : st.reducedMotion);
+    document.body.classList.toggle("focus-mode", st.focusMode);
+    $("focus-toggle").textContent = "Focus Mode: " + (st.focusMode ? "On" : "Off");
+    $("focus-toggle").setAttribute("aria-pressed", String(st.focusMode));
+    $("pref-focus").checked = st.focusMode;
+    $("pref-large").checked = st.largeText;
+    $("pref-motion").checked = root.classList.contains("reduce-motion");
+  }
+
   function renderAll() {
     var stats = computeStats();
+    applyPreferences();
     lastRenderDay = stats.today;
     renderHome(stats);
     renderMoney(stats);
@@ -1683,6 +1746,15 @@
   }
 
   /* ---- Expense form ---- */
+  function lastExpenseDefault(key) {
+    var last = null;
+    data.transactions.forEach(function (x) {
+      if (x.type === "expense" && !x.billId && x[key] && (!last || (x.createdAt || 0) > (last.createdAt || 0))) { last = x; }
+    });
+    if (key === "categoryId") { return last && getCategory(last.categoryId) ? last.categoryId : ""; }
+    return last && last.method ? last.method : "Cash";
+  }
+
   function openExpenseForm(id) {
     var t = id ? findById(data.transactions, id) : null;
     if (id && !t) { return; }
@@ -1697,9 +1769,9 @@
       submitLabel: t ? "Save Changes" : "Add Expense",
       fields: [
         { name: "amount", label: "Amount", type: "money", value: t ? centsToInput(t.amount) : "", hint: "In " + data.settings.currency },
-        { name: "categoryId", label: "Category", type: "select", value: t ? t.categoryId : "", options: categoryOptions() },
+        { name: "categoryId", label: "Category", type: "select", value: t ? t.categoryId : lastExpenseDefault("categoryId"), options: categoryOptions() },
         { name: "date", label: "Date", type: "date", value: t ? t.date : todayStr(), max: todayStr() },
-        { name: "method", label: "Payment method", type: "select", value: t ? t.method : "Cash",
+        { name: "method", label: "Payment method", type: "select", value: t ? t.method : lastExpenseDefault("method"),
           options: PAYMENT_METHODS.map(function (m) { return { value: m, label: m }; }) }
       ],
       onSubmit: function (v) {
@@ -2478,6 +2550,13 @@
     }
     daySelect.innerHTML = html;
 
+    [["pref-focus", "focusMode"], ["pref-large", "largeText"], ["pref-motion", "reducedMotion"]].forEach(function (p) {
+      $(p[0]).addEventListener("change", function () {
+        data.settings[p[1]] = this.checked;
+        commit();
+      });
+    });
+
     $("settings-form").addEventListener("submit", function (event) {
       event.preventDefault();
       var currency = $("settings-currency").value;
@@ -2694,18 +2773,18 @@
       ]);
     });
     var csv = "\uFEFF" + rows.map(function (row) { return row.map(csvCell).join(","); }).join("\r\n");
-    downloadFile(csv, "text/csv;charset=utf-8", "calm-budget-transactions-" + todayStr() + ".csv");
+    downloadFile(csv, "text/csv;charset=utf-8", "monetra-transactions-" + todayStr() + ".csv");
     showToast("CSV file downloaded.");
   }
 
   function exportBackup() {
     var payload = { app: "calm-budget", backupVersion: 1, exportedAt: new Date().toISOString(), data: data };
-    downloadFile(JSON.stringify(payload, null, 2), "application/json", "calm-budget-backup-" + todayStr() + ".json");
+    downloadFile(JSON.stringify(payload, null, 2), "application/json", "monetra-backup-" + todayStr() + ".json");
     showToast("Backup downloaded. Keep the file somewhere safe.");
   }
 
   function validateBackup(parsed) {
-    if (!isPlainObject(parsed) || parsed.app !== "calm-budget" || !isPlainObject(parsed.data)) { return null; }
+    if (!isPlainObject(parsed) || (parsed.app !== "calm-budget" && parsed.app !== "monetra") || !isPlainObject(parsed.data)) { return null; }
     var d = parsed.data;
     if (typeof d.version !== "number" || d.version > DATA_VERSION) { return null; }
 
@@ -2874,6 +2953,7 @@
         case "restore-backup": $("restore-file").click(); break;
         case "skip-setup": completeSetup(false); break;
         case "reset-all": resetAllData(); break;
+        case "toggle-focus": data.settings.focusMode = !data.settings.focusMode; commit(); break;
         default: break;
       }
     });
@@ -2887,7 +2967,7 @@
     });
 
     $("history-search").addEventListener("input", renderHistory);
-    ["history-type", "history-category", "history-from", "history-to"].forEach(function (id) {
+    ["history-type", "history-category", "history-month", "history-from", "history-to"].forEach(function (id) {
       $(id).addEventListener("change", renderHistory);
     });
     $("history-clear").addEventListener("click", function () {
@@ -2896,6 +2976,7 @@
       $("history-category").value = "";
       $("history-from").value = "";
       $("history-to").value = "";
+      $("history-month").value = "";
       renderHistory();
     });
 
