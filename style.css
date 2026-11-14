@@ -1577,3 +1577,12 @@ body.focus-mode #home-goals, body.focus-mode #home-budgets, body.focus-mode #mon
 .review-lead { font-weight: 600; }
 .review-line { margin: 0.9rem 0 0; }
 @media (min-width: 1100px) { #home .home-tools, #home #reminders { grid-column: 1 / -1; margin: 0; } }
+
+/* ---------- 20. Review month navigation, inline category ---------- */
+.month-nav { display: flex; align-items: center; gap: 0.4rem; }
+.month-nav .period-label { margin: 0; min-width: 9rem; text-align: center; font-weight: 600; color: var(--ink); }
+.month-nav .btn:disabled { opacity: 0.4; cursor: default; transform: none; }
+.inline-cat { display: flex; gap: 0.5rem; margin-top: 0.4rem; }
+.inline-cat input { margin: 0; }
+.inline-cat .btn { flex: none; }
+#categories-section .button-row { margin: 0 0 0.5rem; }
