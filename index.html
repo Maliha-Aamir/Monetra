@@ -12,16 +12,16 @@
     }, 8000);
   </script>
   <meta name="description" content="Monetra - Manage Money. Find Your Focus.">
-  <meta name="theme-color" content="#14605a">
+  <meta name="theme-color" content="#153D32">
   <meta name="apple-mobile-web-app-title" content="Monetra">
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2064%2064'%3E%3Cdefs%3E%3ClinearGradient%20id='g'%20x1='0'%20y1='0'%20x2='1'%20y2='1'%3E%3Cstop%20offset='0'%20stop-color='%231b6f67'/%3E%3Cstop%20offset='1'%20stop-color='%2310443f'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20width='64'%20height='64'%20rx='16'%20fill='url(%23g)'/%3E%3Cpath%20d='M17%2046V20l15%2017%2015-17v26'%20fill='none'%20stroke='%23f6f4ee'%20stroke-width='5.5'%20stroke-linecap='round'%20stroke-linejoin='round'/%3E%3Ccircle%20cx='32'%20cy='26.5'%20r='3.8'%20fill='%23d9925a'/%3E%3C/svg%3E">
-  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2064%2064'%3E%3Cdefs%3E%3ClinearGradient%20id='g'%20x1='0'%20y1='0'%20x2='1'%20y2='1'%3E%3Cstop%20offset='0'%20stop-color='%231b6f67'/%3E%3Cstop%20offset='1'%20stop-color='%2310443f'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20width='64'%20height='64'%20rx='16'%20fill='url(%23g)'/%3E%3Cpath%20d='M17%2046V20l15%2017%2015-17v26'%20fill='none'%20stroke='%23f6f4ee'%20stroke-width='5.5'%20stroke-linecap='round'%20stroke-linejoin='round'/%3E%3Ccircle%20cx='32'%20cy='26.5'%20r='3.8'%20fill='%23d9925a'/%3E%3C/svg%3E">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2064%2064'%3E%3Cdefs%3E%3ClinearGradient%20id='g'%20x1='0'%20y1='0'%20x2='1'%20y2='1'%3E%3Cstop%20offset='0'%20stop-color='%23153D32'/%3E%3Cstop%20offset='1'%20stop-color='%23153D32'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20width='64'%20height='64'%20rx='16'%20fill='url(%23g)'/%3E%3Cpath%20d='M17%2046V20l15%2017%2015-17v26'%20fill='none'%20stroke='%23F4F5F0'%20stroke-width='5.5'%20stroke-linecap='round'%20stroke-linejoin='round'/%3E%3Ccircle%20cx='32'%20cy='26.5'%20r='3.8'%20fill='%23F4F5F0'/%3E%3C/svg%3E">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2064%2064'%3E%3Cdefs%3E%3ClinearGradient%20id='g'%20x1='0'%20y1='0'%20x2='1'%20y2='1'%3E%3Cstop%20offset='0'%20stop-color='%23153D32'/%3E%3Cstop%20offset='1'%20stop-color='%23153D32'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20width='64'%20height='64'%20rx='16'%20fill='url(%23g)'/%3E%3Cpath%20d='M17%2046V20l15%2017%2015-17v26'%20fill='none'%20stroke='%23F4F5F0'%20stroke-width='5.5'%20stroke-linecap='round'%20stroke-linejoin='round'/%3E%3Ccircle%20cx='32'%20cy='26.5'%20r='3.8'%20fill='%23F4F5F0'/%3E%3C/svg%3E">
   <title>Monetra - Manage Money. Find Your Focus.</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=2">
-  <script src="script.js?v=2" defer></script>
+  <link rel="stylesheet" href="style.css?v=3">
+  <script src="script.js?v=3" defer></script>
 </head>
 <body>
 
@@ -115,6 +115,8 @@
     <section id="home" class="page">
       <h1>Home</h1>
       <p id="home-greeting" class="page-sub"></p>
+      <div class="home-tools"><button type="button" id="focus-toggle" class="btn btn-secondary btn-small" data-action="toggle-focus" aria-pressed="false">Focus Mode: Off</button></div>
+      <div id="reminders" class="reminders" role="status" hidden></div>
 
       <div id="safe-to-spend-card" class="card">
         <h2>Safe to Spend</h2>
@@ -154,6 +156,7 @@
       <div id="upcoming-bills" class="card">
         <h2>Upcoming Bills</h2>
         <div id="upcoming-bills-list"></div>
+        <p class="field-hint">Reminders show when you open Monetra. Monetra cannot notify you while it is closed.</p>
       </div>
 
       <div id="home-goals" class="card">
@@ -219,6 +222,10 @@
               <div class="field">
                 <label for="history-category">Category</label>
                 <select id="history-category"></select>
+              </div>
+              <div class="field">
+                <label for="history-month">Month</label>
+                <input id="history-month" type="month">
               </div>
               <div class="field">
                 <label for="history-from">From</label>
@@ -321,6 +328,13 @@
               <select id="settings-day"></select>
               <p class="field-hint">The day your budget month begins, for example the day you get paid.</p>
             </div>
+            <fieldset class="prefs">
+              <legend>Focus &amp; comfort</legend>
+              <label class="check"><input type="checkbox" id="pref-focus"><span>Focus Mode<small>Home shows only Safe to Spend, what is left and upcoming bills.</small></span></label>
+              <label class="check"><input type="checkbox" id="pref-large"><span>Larger Text<small>Makes text bigger across the app.</small></span></label>
+              <label class="check"><input type="checkbox" id="pref-motion"><span>Reduced Motion<small>Turns off animations. Follows your device setting until you change it here.</small></span></label>
+              <p class="field-hint">These switches save instantly on this device.</p>
+            </fieldset>
             <button type="submit" class="btn btn-primary">Save Settings</button>
           </form>
         </div>
