@@ -51,6 +51,7 @@
   var currentForm = null;
   var formatters = {};
   var lastRenderDay = "";
+  var reviewOffset = 0;   // 0 = this budget period, -1 = the one before, ...
 
   /* ---------------------------------------------------------
      3. SMALL HELPERS
@@ -1203,12 +1204,17 @@
   }
 
   function renderReview(stats) {
-    $("review-period").textContent = "Budget period: " + formatPeriod(stats.period);
-    var cur = sumPeriod(stats.period.start, stats.today);
+    var per = stats.period;
+    if (reviewOffset < 0) { per = getPeriod(addMonths(stats.period.start, reviewOffset, data.settings.monthStartDay), data.settings.monthStartDay); }
+    var to = per.end < stats.today ? per.end : stats.today;
+    $("review-period").textContent = formatPeriod(per);
+    $("review-prev").disabled = !data.transactions.some(function (t) { return t.date < per.start; });
+    $("review-next").disabled = reviewOffset >= 0;
+    var cur = sumPeriod(per.start, to);
     if (cur.income === 0 && cur.spent === 0) {
       $("review-content").innerHTML = emptyState(
         "Nothing to review yet",
-        "Add income or expenses and your spending overview will appear here.",
+        "No income or expenses in this period yet. Your overview appears once you add some.",
         btn("Add First Expense", "add-expense", "btn-add btn-small btn-secondary")
       );
       return;
@@ -1220,7 +1226,7 @@
     });
     var planned = 0;
     var budgeted = 0;
-    stats.budgets.forEach(function (b) { planned += b.limit; budgeted += b.spent; });
+    stats.budgets.forEach(function (b) { planned += b.limit; budgeted += cur.byCat[b.categoryId] || 0; });
 
     var html = '<p class="review-lead">Your spending overview is ready.</p>' +
       '<div class="summary-row">' +
@@ -1236,12 +1242,12 @@
     if (planned > 0) {
       var pct = budgeted / planned * 100;
       html += '<p class="review-line">Budget usage: <strong>' + Math.round(pct) + "%</strong> (" + formatMoney(budgeted) +
-        " of " + formatMoney(planned) + " in budgeted categories)</p>" + progressHTML(pct, pct >= 100 ? "over" : pct >= 80 ? "warn" : "");
+        " of " + formatMoney(planned) + " in budgeted categories)</p>" + progressHTML(pct, pct >= 100 ? "over" : pct >= 80 ? "warn" : "") + (pct < 100 ? '<p class="review-line">You\'ve made progress toward your budget.</p>' : "");
     }
 
     // Compare with the same number of days last period, and only when both periods have expenses
-    var prev = getPeriod(addDays(stats.period.start, -1), data.settings.monthStartDay);
-    var prevTo = addDays(prev.start, daysBetween(stats.period.start, stats.today));
+    var prev = getPeriod(addDays(per.start, -1), data.settings.monthStartDay);
+    var prevTo = addDays(prev.start, daysBetween(per.start, to));
     if (prevTo > prev.end) { prevTo = prev.end; }
     var before = sumPeriod(prev.start, prevTo);
     if (before.count > 0 && cur.count > 0) {
@@ -1400,11 +1406,11 @@
         if (u && u.bill) { parts.push(plural(u.bill, "bill")); }
         if (u && u.recurring) { parts.push(u.recurring + (u.recurring === 1 ? " recurring expense" : " recurring expenses")); }
         if (u && u.budget) { parts.push("a budget"); }
-        var usage = parts.length ? "Used in " + parts.join(", ") : "Not used yet";
+        var usage = parts.length ? parts.join(", ") : "Not used yet";
         return '<div class="row"><div class="row-main"><div class="row-title">' + esc(c.name) + "</div>" +
           '<div class="row-sub">' + esc(usage) + "</div></div>" +
           '<div class="row-actions">' + btn("Edit", "edit-category", "btn-ghost btn-small", c.id) +
-          btn("Delete", "delete-category", "btn-ghost btn-small btn-danger-text", c.id) + "</div></div>";
+          (c.name === "Other" ? "" : btn("Delete", "delete-category", "btn-ghost btn-small btn-danger-text", c.id)) + "</div></div>";
       }).join("");
     }
   }
@@ -1509,6 +1515,11 @@
       }
     }
 
+    if (f.addCategory) {
+      control += '<button type="button" class="btn btn-ghost btn-small btn-add" data-action="inline-category">Add category</button>' +
+        '<div class="inline-cat" hidden><input type="text" class="inline-cat-input" maxlength="40" placeholder="New category name" autocomplete="off" aria-label="New category name">' +
+        '<button type="button" class="btn btn-small" data-action="inline-category-save" data-for="' + id + '">Add</button></div>';
+    }
     var hint = f.hint ? '<p class="field-hint">' + esc(f.hint) + "</p>" : "";
     return '<div class="field">' + label + control + hint + "</div>";
   }
@@ -1547,7 +1558,40 @@
     currentForm = null;
   }
 
+  function saveInlineCategory(btnEl) {
+    var wrap = btnEl.parentNode;
+    var input = wrap.querySelector("input");
+    var name = input.value.trim();
+    if (!name) { showFormError("Please type a category name."); return; }
+    if (data.categories.some(function (x) { return x.name.toLowerCase() === name.toLowerCase(); })) {
+      showFormError("You already have a category with this name."); return;
+    }
+    var cat = { id: uid(), name: name };
+    data.categories.push(cat);
+    saveData();
+    var select = $(btnEl.getAttribute("data-for"));
+    var keep = select.disabled ? "" : select.value;
+    var opts = categoryOptions();
+    if (select.getAttribute("data-budget") !== null || $("form-title").textContent === "Add Budget") {
+      var used = data.budgets.map(function (x) { return x.categoryId; });
+      opts = opts.filter(function (o) { return used.indexOf(o.value) === -1; });
+    }
+    select.innerHTML = opts.map(function (o) { return '<option value="' + esc(o.value) + '">' + esc(o.label) + "</option>"; }).join("");
+    select.value = cat.id;
+    input.value = "";
+    wrap.hidden = true;
+    $("form-error").hidden = true;
+    renderAll();
+    showToast("Category added.");
+  }
+
   function setupFormEvents() {
+    $("form-dialog").addEventListener("keydown", function (event) {
+      if (event.key === "Enter" && event.target.classList && event.target.classList.contains("inline-cat-input")) {
+        event.preventDefault();
+        saveInlineCategory(event.target.parentNode.querySelector("button"));
+      }
+    });
     $("entry-form").addEventListener("submit", function (event) {
       event.preventDefault();
       if (!currentForm) { return; }
@@ -1769,7 +1813,7 @@
       submitLabel: t ? "Save Changes" : "Add Expense",
       fields: [
         { name: "amount", label: "Amount", type: "money", value: t ? centsToInput(t.amount) : "", hint: "In " + data.settings.currency },
-        { name: "categoryId", label: "Category", type: "select", value: t ? t.categoryId : lastExpenseDefault("categoryId"), options: categoryOptions() },
+        { name: "categoryId", label: "Category", type: "select", value: t ? t.categoryId : lastExpenseDefault("categoryId"), options: categoryOptions(), addCategory: true },
         { name: "date", label: "Date", type: "date", value: t ? t.date : todayStr(), max: todayStr() },
         { name: "method", label: "Payment method", type: "select", value: t ? t.method : lastExpenseDefault("method"),
           options: PAYMENT_METHODS.map(function (m) { return { value: m, label: m }; }) }
@@ -1817,7 +1861,7 @@
     if (isIncome) {
       fields.push({ name: "source", label: "Income source", type: "text", value: r ? r.source : "", placeholder: "For example: Salary", maxlength: 60 });
     } else {
-      fields.push({ name: "categoryId", label: "Category", type: "select", value: r ? r.categoryId : "", options: categoryOptions() });
+      fields.push({ name: "categoryId", label: "Category", type: "select", value: r ? r.categoryId : "", options: categoryOptions(), addCategory: true });
       fields.push({ name: "method", label: "Payment method", type: "select", value: r ? r.method : "Cash",
         options: PAYMENT_METHODS.map(function (m) { return { value: m, label: m }; }) });
     }
@@ -1936,7 +1980,7 @@
       title: b ? "Edit Budget" : "Add Budget",
       submitLabel: b ? "Save Changes" : "Add Budget",
       fields: [
-        { name: "categoryId", label: "Category", type: "select", value: b ? b.categoryId : "", options: options, disabled: !!b },
+        { name: "categoryId", label: "Category", type: "select", value: b ? b.categoryId : "", options: options, disabled: !!b, addCategory: !b },
         { name: "limit", label: "Monthly spending limit", type: "money", value: b ? centsToInput(b.limit) : "", hint: "In " + data.settings.currency }
       ],
       onSubmit: function (v) {
@@ -2020,7 +2064,7 @@
         { name: "name", label: "Bill name", type: "text", value: b ? b.name : "", placeholder: "For example: Electricity", maxlength: 60 },
         { name: "amount", label: "Amount", type: "money", value: b ? centsToInput(b.amount) : "", hint: "In " + data.settings.currency },
         { name: "dueDate", label: "Due date", type: "date", value: b ? b.dueDate : todayStr() },
-        { name: "categoryId", label: "Category", type: "select", value: b ? b.categoryId : defaultCategory, options: categoryOptions() },
+        { name: "categoryId", label: "Category", type: "select", value: b ? b.categoryId : defaultCategory, options: categoryOptions(), addCategory: true },
         { name: "status", label: "Status", type: "select", value: b && b.paid ? "paid" : "unpaid",
           options: [{ value: "unpaid", label: "Unpaid" }, { value: "paid", label: "Paid" }],
           hint: "Marking a bill as paid adds one linked expense (dated today). Editing a paid bill keeps that expense in step." }
@@ -2391,6 +2435,7 @@
   function deleteCategory(id) {
     var c = findById(data.categories, id);
     if (!c) { return; }
+    if (c.name === "Other") { showToast("Other is the safe place for records, so it stays."); return; }
 
     var txs = data.transactions.filter(function (t) { return t.type === "expense" && t.categoryId === id; });
     var bills = data.bills.filter(function (b) { return b.categoryId === id; });
@@ -2953,6 +2998,15 @@
         case "restore-backup": $("restore-file").click(); break;
         case "skip-setup": completeSetup(false); break;
         case "reset-all": resetAllData(); break;
+        case "inline-category": {
+          var box = el.nextElementSibling;
+          box.hidden = !box.hidden;
+          if (!box.hidden) { box.querySelector("input").focus(); }
+          break;
+        }
+        case "inline-category-save": saveInlineCategory(el); break;
+        case "review-prev": reviewOffset -= 1; renderAll(); break;
+        case "review-next": if (reviewOffset < 0) { reviewOffset += 1; renderAll(); } break;
         case "toggle-focus": data.settings.focusMode = !data.settings.focusMode; commit(); break;
         default: break;
       }
