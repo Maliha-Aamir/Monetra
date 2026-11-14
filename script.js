@@ -730,7 +730,7 @@
   // Shows the Add Anyway / Cancel question. Cancel leaves the form open so nothing is lost.
   function askAboutDuplicateIncome(cfg) {
     openConfirm({
-      title: "Possible duplicate income",
+      title: cfg.title || "Possible duplicate income",
       message: cfg.message,
       summary: cfg.summary,
       removesTitle: cfg.matchesTitle,
@@ -982,6 +982,12 @@
     $("summary-spent").textContent = formatMoney(stats.spent);
     $("summary-left").textContent = formatMoney(stats.left);
     $("summary-left").parentNode.classList.toggle("is-negative", stats.left < 0);
+    if (stats.income > 0) {
+      var sp = stats.spent / stats.income * 100;
+      $("summary-progress").innerHTML = '<p class="field-hint">Spending progress: ' + Math.round(sp) + "% of income spent</p>" + progressHTML(sp, sp >= 100 ? "warn" : "");
+    } else {
+      $("summary-progress").innerHTML = "";
+    }
 
     var unpaid = data.bills.filter(function (b) { return !b.paid; })
       .sort(function (a, b) { return a.dueDate < b.dueDate ? -1 : 1; });
@@ -1035,6 +1041,19 @@
   /* ---------------------------------------------------------
      12. RENDER: MONEY (Income, Expenses, Recurring, History)
      --------------------------------------------------------- */
+  function expenseFoldHTML(t) {
+    var title = transactionTitle(t);
+    var parts = [formatDate(t.date)];
+    if (title !== categoryName(t.categoryId)) { parts.push(categoryName(t.categoryId)); }
+    if (t.method) { parts.push(t.method); }
+    if (t.recurringId) { parts.push("Recurring"); }
+    var acts = t.billId ? '<span class="badge badge-muted">Paid bill</span>' : btn("Edit", "edit-transaction", "btn-ghost btn-small", t.id);
+    acts += btn("Delete", "delete-transaction", "btn-ghost btn-small btn-danger-text", t.id);
+    return '<details class="row-fold"><summary><span class="row-title">' + esc(title) + '</span><span class="row-amount expense">-' +
+      formatMoney(t.amount) + "</span></summary>" + '<div class="row-sub">' + esc(parts.join(" \u00B7 ")) +
+      '</div><div class="row-actions fold-actions">' + acts + "</div></details>";
+  }
+
   function emptyAddBtn(type) {
     var any = data.transactions.some(function (t) { return t.type === type; });
     return btn((any ? "Add " : "Add First ") + (type === "income" ? "Income" : "Expense"),
@@ -1061,7 +1080,7 @@
 
     var html = '<p class="list-summary"><span>This period (' + esc(formatPeriod(stats.period)) +
       ")</span><strong>" + formatMoney(total) + "</strong></p>";
-    html += rows.slice(0, MAX_LIST_ROWS).map(transactionRowHTML).join("");
+    html += rows.slice(0, MAX_LIST_ROWS).map(type === "expense" ? expenseFoldHTML : transactionRowHTML).join("");
     if (rows.length > MAX_LIST_ROWS) {
       html += '<p class="muted">Showing the latest ' + MAX_LIST_ROWS + ". Open Transaction History below for everything.</p>";
     }
@@ -1720,6 +1739,39 @@
   var AMOUNT_HELP = "Please enter a valid amount, like 2500 or 2500.50.";
 
   /* ---- Income form ---- */
+  // Optional "Repeat": the entry itself is saved as usual, then a rule starts at its next date after today
+  function addRuleFromEntry(type, v, amount) {
+    if (["weekly", "monthly", "yearly"].indexOf(v.repeat) === -1) { return; }
+    var anchor = +v.date.slice(8, 10);
+    var today = todayStr();
+    var next = nextOccurrence(v.date, v.repeat, anchor);
+    var guard = 0;
+    while (next <= today && guard++ < 400) { next = nextOccurrence(next, v.repeat, anchor); }
+    var r = { id: uid(), type: type, amount: amount, frequency: v.repeat, nextDate: next, anchorDay: anchor, active: true, createdAt: Date.now() };
+    if (type === "income") { r.source = v.source; } else { r.categoryId = v.categoryId; r.method = v.method; }
+    data.recurring.push(r);
+  }
+
+  // Warns (never blocks) when a new expense looks like one a recurring rule covers
+  function findDuplicatesForManualExpense(amount, categoryId, date) {
+    var today = todayStr();
+    var found = [];
+    data.transactions.forEach(function (t) {
+      if (t.type !== "expense" || !t.recurringId || t.amount !== amount || t.categoryId !== categoryId || t.date > today) { return; }
+      var rule = findById(data.recurring, t.recurringId);
+      if (sameIncomeWindow(rule ? rule.frequency : "", t.date, date)) {
+        found.push(formatMoney(t.amount) + ", " + categoryName(t.categoryId) + ", " + formatDate(t.date) + " (added by a recurring rule)");
+      }
+    });
+    data.recurring.forEach(function (r) {
+      if (r.type !== "expense" || !r.active || r.amount !== amount || r.categoryId !== categoryId) { return; }
+      if (sameIncomeWindow(r.frequency, r.nextDate, date)) {
+        found.push("Recurring " + frequencyLabel(r.frequency).toLowerCase() + " expense, " + formatMoney(r.amount) + ", scheduled for " + formatDate(r.nextDate));
+      }
+    });
+    return found;
+  }
+
   function openIncomeForm(id) {
     var t = id ? findById(data.transactions, id) : null;
     if (id && !t) { return; }
@@ -1736,7 +1788,7 @@
         { name: "amount", label: "Amount", type: "money", value: t ? centsToInput(t.amount) : "", hint: "In " + data.settings.currency },
         { name: "source", label: "Income source", type: "text", value: t ? t.source : "", placeholder: "For example: Salary", suggestions: sources, maxlength: 60 },
         { name: "date", label: "Date", type: "date", value: t ? t.date : todayStr(), max: todayStr() }
-      ],
+      ].concat(t ? [] : [{ name: "repeat", label: "Repeat", type: "select", value: "none", options: [{ value: "none", label: "Does not repeat" }, { value: "weekly", label: "Weekly" }, { value: "monthly", label: "Monthly" }, { value: "yearly", label: "Yearly" }], hint: "Optional. The next date is added automatically when it arrives." }]),
       onSubmit: function (v) {
         var amount = parseMoney(v.amount);
         if (amount === null) { return AMOUNT_HELP; }
@@ -1754,7 +1806,8 @@
               id: uid(), type: "income", amount: amount, source: v.source,
               date: v.date, createdAt: Date.now()
             });
-            commit("Income added.");
+            addRuleFromEntry("income", v, amount);
+            commit(v.repeat && v.repeat !== "none" ? "Income added. It will repeat " + v.repeat + "." : "Income added.");
           }
         }
 
@@ -1817,7 +1870,7 @@
         { name: "date", label: "Date", type: "date", value: t ? t.date : todayStr(), max: todayStr() },
         { name: "method", label: "Payment method", type: "select", value: t ? t.method : lastExpenseDefault("method"),
           options: PAYMENT_METHODS.map(function (m) { return { value: m, label: m }; }) }
-      ],
+      ].concat(t ? [] : [{ name: "repeat", label: "Repeat", type: "select", value: "none", options: [{ value: "none", label: "Does not repeat" }, { value: "weekly", label: "Weekly" }, { value: "monthly", label: "Monthly" }, { value: "yearly", label: "Yearly" }], hint: "Optional. The next date is added automatically when it arrives." }]),
       onSubmit: function (v) {
         var amount = parseMoney(v.amount);
         if (amount === null) { return AMOUNT_HELP; }
@@ -1826,6 +1879,25 @@
         var dateError = checkDate(v.date, true);
         if (dateError) { return dateError; }
 
+        if (!t) {
+          var dupes = findDuplicatesForManualExpense(amount, v.categoryId, v.date);
+          if (dupes.length) {
+            askAboutDuplicateIncome({
+              title: "Possible duplicate expense",
+              message: "This expense looks like one a recurring expense already covers. Saving it as well may count the same spending twice.",
+              summary: [["Category", categoryName(v.categoryId)], ["Amount", formatMoney(amount)], ["Date", formatDate(v.date)]],
+              matchesTitle: "Similar recurring expense",
+              matches: dupes,
+              onConfirm: function () {
+                data.transactions.push({ id: uid(), type: "expense", amount: amount, categoryId: v.categoryId, date: v.date, method: v.method, createdAt: Date.now() });
+                addRuleFromEntry("expense", v, amount);
+                commit("Expense added.");
+                closeForm();
+              }
+            });
+            return FORM_PENDING;
+          }
+        }
         if (t) {
           t.amount = amount; t.categoryId = v.categoryId;
           t.date = v.date; t.method = v.method;
@@ -1835,7 +1907,8 @@
             id: uid(), type: "expense", amount: amount, categoryId: v.categoryId,
             date: v.date, method: v.method, createdAt: Date.now()
           });
-          commit("Expense added.");
+          addRuleFromEntry("expense", v, amount);
+          commit(v.repeat && v.repeat !== "none" ? "Expense added. It will repeat " + v.repeat + "." : "Expense added.");
         }
         return null;
       }
