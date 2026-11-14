@@ -1,5 +1,5 @@
 /* =========================================================
-   CALM BUDGET - style.css
+   MONETRA - style.css
    Manage Money. Find Your Focus.
    ========================================================= */
 
@@ -51,6 +51,12 @@
 
 [hidden] {
   display: none !important;
+}
+
+/* While the app decides between Setup and Dashboard, nothing is shown.
+   index.html adds the "booting" class; script.js removes it. */
+html.booting body {
+  visibility: hidden;
 }
 
 html {
@@ -1412,7 +1418,10 @@ body.setup-active .mobile-header {
   min-height: 100vh;
   min-height: 100dvh;
   padding: 1rem 0.85rem;
-  background: var(--bg);
+  background:
+    radial-gradient(circle at 15% 0%, rgba(35, 133, 123, 0.14) 0, rgba(35, 133, 123, 0) 45%),
+    radial-gradient(circle at 100% 100%, rgba(217, 146, 90, 0.14) 0, rgba(217, 146, 90, 0) 40%),
+    var(--bg);
 }
 
 .setup-card {
