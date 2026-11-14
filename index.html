@@ -261,14 +261,30 @@
       </div>
 
       <div id="review-section" class="card">
-        <h2>Monthly Review</h2>
-        <p id="review-period" class="period-label"></p>
+        <div class="card-head">
+          <h2>Monthly Review</h2>
+          <div class="month-nav">
+            <button type="button" id="review-prev" class="btn btn-secondary btn-small" data-action="review-prev" aria-label="Previous month">&lsaquo;</button>
+            <span id="review-period" class="period-label"></span>
+            <button type="button" id="review-next" class="btn btn-secondary btn-small" data-action="review-next" aria-label="Next month">&rsaquo;</button>
+          </div>
+        </div>
         <div id="review-content"></div>
       </div>
 
       <div id="alerts-section" class="card">
         <h2>Alerts</h2>
         <div id="alerts-list"></div>
+      </div>
+
+      <div id="categories-section" class="card">
+        <details class="collapse">
+          <summary><h2>Categories</h2></summary>
+          <div class="collapse-body">
+            <div class="button-row"><button type="button" class="btn btn-add btn-small btn-secondary" data-action="add-category">Add Category</button></div>
+            <div id="categories-list"></div>
+          </div>
+        </details>
       </div>
     </section>
 
@@ -338,14 +354,6 @@
             <button type="submit" class="btn btn-primary">Save Settings</button>
           </form>
         </div>
-      </div>
-
-      <div id="categories-section" class="card">
-        <div class="card-head">
-          <h2>Categories</h2>
-          <button type="button" class="btn btn-add btn-small" data-action="add-category">Add Category</button>
-        </div>
-        <div id="categories-list"></div>
       </div>
 
       <div id="export-section" class="card">
