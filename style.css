@@ -5,19 +5,19 @@
 
 /* ---------- 1. Colors, fonts, icons ---------- */
 :root {
-  --bg: #f6f4ee;
+  --bg: #F4F5F0;
   --surface: #ffffff;
-  --ink: #16302c;
-  --ink-soft: #5d706c;
-  --ink-faint: #8a9b97;
-  --border: #e6e3da;
+  --ink: #1F2A27;
+  --ink-soft: #5B6360;
+  --ink-faint: #8A918F;
+  --border: #E3E6E1;
 
-  --teal-900: #10443f;
-  --teal-800: #14605a;
-  --teal-700: #1b6f67;
-  --teal-600: #23857b;
-  --teal-100: #dcefec;
-  --teal-50: #eef7f5;
+  --teal-900: #153D32;
+  --teal-800: #153D32;
+  --teal-700: #1D4A3D;
+  --teal-600: #2F6B58;
+  --teal-100: #E4ECE7;
+  --teal-50: #EFF3EF;
 
   --income: #1f8a5b;
   --income-soft: #e6f4ec;
@@ -30,8 +30,8 @@
 
   --radius: 18px;
   --radius-sm: 12px;
-  --shadow-sm: 0 1px 2px rgba(22, 48, 44, 0.05), 0 4px 14px rgba(22, 48, 44, 0.05);
-  --shadow-md: 0 2px 4px rgba(22, 48, 44, 0.06), 0 10px 28px rgba(22, 48, 44, 0.09);
+  --shadow-sm: 0 1px 2px rgba(21, 40, 34, 0.05), 0 4px 14px rgba(21, 40, 34, 0.05);
+  --shadow-md: 0 2px 4px rgba(21, 40, 34, 0.06), 0 10px 28px rgba(21, 40, 34, 0.09);
   --sidebar-width: 250px;
   --ease: 0.2s ease;
 
@@ -41,7 +41,7 @@
   --icon-bills: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1z'/%3E%3Cpath d='M8 8h8M8 12h8M8 16h5'/%3E%3C/svg%3E");
   --icon-goals: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Ccircle cx='12' cy='12' r='6'/%3E%3Ccircle cx='12' cy='12' r='2'/%3E%3C/svg%3E");
   --icon-more: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='3' width='7' height='7' rx='1.5'/%3E%3Crect x='14' y='3' width='7' height='7' rx='1.5'/%3E%3Crect x='3' y='14' width='7' height='7' rx='1.5'/%3E%3Crect x='14' y='14' width='7' height='7' rx='1.5'/%3E%3C/svg%3E");
-  --logo: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2064%2064'%3E%3Cdefs%3E%3ClinearGradient%20id='g'%20x1='0'%20y1='0'%20x2='1'%20y2='1'%3E%3Cstop%20offset='0'%20stop-color='%231b6f67'/%3E%3Cstop%20offset='1'%20stop-color='%2310443f'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20width='64'%20height='64'%20rx='16'%20fill='url(%23g)'/%3E%3Cpath%20d='M17%2046V20l15%2017%2015-17v26'%20fill='none'%20stroke='%23f6f4ee'%20stroke-width='5.5'%20stroke-linecap='round'%20stroke-linejoin='round'/%3E%3Ccircle%20cx='32'%20cy='26.5'%20r='3.8'%20fill='%23d9925a'/%3E%3C/svg%3E");
+  --logo: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2064%2064'%3E%3Cdefs%3E%3ClinearGradient%20id='g'%20x1='0'%20y1='0'%20x2='1'%20y2='1'%3E%3Cstop%20offset='0'%20stop-color='%23153D32'/%3E%3Cstop%20offset='1'%20stop-color='%23153D32'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20width='64'%20height='64'%20rx='16'%20fill='url(%23g)'/%3E%3Cpath%20d='M17%2046V20l15%2017%2015-17v26'%20fill='none'%20stroke='%23F4F5F0'%20stroke-width='5.5'%20stroke-linecap='round'%20stroke-linejoin='round'/%3E%3Ccircle%20cx='32'%20cy='26.5'%20r='3.8'%20fill='%23F4F5F0'/%3E%3C/svg%3E");
   --icon-brand: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6L9 17l-5-5'/%3E%3C/svg%3E");
 }
 
@@ -134,7 +134,7 @@ strong,
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
   border-top: 1px solid var(--border);
-  box-shadow: 0 -4px 20px rgba(22, 48, 44, 0.06);
+  box-shadow: 0 -4px 20px rgba(21, 40, 34, 0.06);
   padding: 0.35rem 0.4rem calc(0.35rem + env(safe-area-inset-bottom, 0px));
 }
 
@@ -341,7 +341,7 @@ button,
   background: var(--teal-700);
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  box-shadow: 0 2px 6px rgba(27, 111, 103, 0.25);
+  box-shadow: 0 2px 6px rgba(21, 61, 50, 0.25);
   cursor: pointer;
   transition: background var(--ease), box-shadow var(--ease), transform var(--ease);
 }
@@ -349,7 +349,7 @@ button,
 button:hover,
 .btn:hover {
   background: var(--teal-800);
-  box-shadow: 0 4px 12px rgba(27, 111, 103, 0.3);
+  box-shadow: 0 4px 12px rgba(21, 61, 50, 0.3);
   transform: translateY(-1px);
 }
 
@@ -361,7 +361,7 @@ button:active,
 .btn-secondary {
   color: var(--teal-800);
   background: #ffffff;
-  border-color: #cfe0dc;
+  border-color: #D3DDD6;
   box-shadow: none;
 }
 
@@ -428,18 +428,13 @@ button:active,
   padding: 1.75rem 1.5rem;
   color: #ffffff;
   background-color: var(--teal-800);
-  background-image: radial-gradient(
-    circle at 100% 0%,
-    rgba(255, 255, 255, 0.1) 0,
-    rgba(255, 255, 255, 0) 55%
-  );
   border: none;
-  box-shadow: 0 14px 34px rgba(20, 96, 90, 0.28);
+  box-shadow: 0 14px 34px rgba(21, 61, 50, 0.28);
 }
 
 #safe-to-spend-card:hover {
   border: none;
-  box-shadow: 0 16px 38px rgba(20, 96, 90, 0.32);
+  box-shadow: 0 16px 38px rgba(21, 61, 50, 0.32);
 }
 
 #safe-to-spend-card h2 {
@@ -452,7 +447,7 @@ button:active,
 }
 
 #safe-to-spend-card h2::before {
-  background: #8fd6cc;
+  background: #A9C7B8;
 }
 
 #safe-to-spend-amount {
@@ -613,7 +608,7 @@ button:active,
   color: var(--teal-700);
 }
 .quick-bill:hover {
-  background: #cde7e3;
+  background: #DCE7E0;
 }
 
 .quick-saving {
@@ -625,7 +620,7 @@ button:active,
   color: var(--teal-600);
 }
 .quick-saving:hover {
-  background: #e0f0ed;
+  background: #E8EFEA;
 }
 
 /* ---------- 9. Summary row (Income / Spent / Left) ---------- */
@@ -978,7 +973,7 @@ input:focus,
 select:focus {
   outline: none;
   border-color: var(--teal-600);
-  box-shadow: 0 0 0 4px rgba(35, 133, 123, 0.18);
+  box-shadow: 0 0 0 4px rgba(47, 107, 88, 0.18);
 }
 
 button:focus-visible,
@@ -1047,11 +1042,11 @@ dialog {
   background: var(--surface);
   border: none;
   border-radius: var(--radius);
-  box-shadow: 0 24px 60px rgba(16, 68, 63, 0.3);
+  box-shadow: 0 24px 60px rgba(21, 61, 50, 0.3);
 }
 
 dialog::backdrop {
-  background: rgba(16, 68, 63, 0.4);
+  background: rgba(21, 61, 50, 0.4);
 }
 
 #entry-form {
@@ -1179,12 +1174,12 @@ dialog::backdrop {
   color: #ffffff;
   background: var(--teal-900);
   border-radius: 14px;
-  box-shadow: 0 10px 30px rgba(16, 68, 63, 0.35);
+  box-shadow: 0 10px 30px rgba(21, 61, 50, 0.35);
 }
 
 .toast-undo {
   padding: 0.3rem 0.8rem;
-  color: #bfeae4;
+  color: #CFE3D8;
   background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.35);
   box-shadow: none;
@@ -1243,7 +1238,7 @@ dialog::backdrop {
     height: 36px;
     border-radius: 11px;
     background: var(--logo) center / 100% 100% no-repeat;
-    box-shadow: 0 4px 10px rgba(16, 68, 63, 0.28);
+    box-shadow: 0 4px 10px rgba(21, 61, 50, 0.28);
   }
 
   #main-nav .nav-tagline {
@@ -1278,7 +1273,7 @@ dialog::backdrop {
   }
 
   #main-nav a:hover {
-    background: #f1efe8;
+    background: #ECEEE8;
     color: var(--ink);
   }
 
@@ -1389,20 +1384,14 @@ dialog::backdrop {
 }
 
 /* ---------- 16. Reduced motion ---------- */
-@media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
-  }
-
-  * {
-    transition: none !important;
-  }
-
-  button:hover,
-  .btn:hover {
-    transform: none;
-  }
+/* Reduced motion and Larger Text are switched by classes that script.js puts on <html> */
+html.reduce-motion, html.reduce-motion * , html.reduce-motion *::before, html.reduce-motion *::after {
+  scroll-behavior: auto !important;
+  transition: none !important;
+  animation: none !important;
 }
+html.reduce-motion button:hover, html.reduce-motion .btn:hover { transform: none; }
+html.large-text { font-size: 120%; }
 
 /* ---------- 17. First-time setup (compact, fits common phones) ---------- */
 body.setup-active #main-nav,
@@ -1418,10 +1407,7 @@ body.setup-active .mobile-header {
   min-height: 100vh;
   min-height: 100dvh;
   padding: 1rem 0.85rem;
-  background:
-    radial-gradient(circle at 15% 0%, rgba(35, 133, 123, 0.14) 0, rgba(35, 133, 123, 0) 45%),
-    radial-gradient(circle at 100% 100%, rgba(217, 146, 90, 0.14) 0, rgba(217, 146, 90, 0) 40%),
-    var(--bg);
+  background: var(--bg);
 }
 
 .setup-card {
@@ -1440,7 +1426,7 @@ body.setup-active .mobile-header {
   margin: 0 auto 0.75rem;
   border-radius: 16px;
   background: var(--logo) center / 100% 100% no-repeat;
-  box-shadow: 0 6px 14px rgba(16, 68, 63, 0.28);
+  box-shadow: 0 6px 14px rgba(21, 61, 50, 0.28);
 }
 
 .setup-card h1 {
@@ -1578,3 +1564,16 @@ input, select, textarea { max-width: 100%; }
   .card-head { flex-wrap: wrap; gap: 0.5rem; }
   #main-nav a { font-size: 0.68rem; }
 }
+/* ---------- 19. Focus Mode, preferences, reminders ---------- */
+body.focus-mode #home-goals, body.focus-mode #home-budgets, body.focus-mode #month-summary, body.focus-mode .breakdown { display: none; }
+.home-tools { margin: -0.5rem 0 1rem; }
+.reminders { margin-bottom: 1rem; padding: 0.8rem 1rem; background: var(--teal-50); border: 1px solid var(--teal-100); border-radius: var(--radius-sm); }
+.reminders p { margin: 0.15rem 0; }
+.prefs { margin: 0 0 1rem; padding: 0; border: 0; }
+.prefs legend { margin-bottom: 0.5rem; padding: 0; font-weight: 700; }
+.check { display: flex; align-items: flex-start; gap: 0.7rem; margin-bottom: 0.75rem; font-weight: 600; cursor: pointer; }
+.check input { flex: none; width: 1.3rem; height: 1.3rem; margin: 0.15rem 0 0; accent-color: var(--teal-800); }
+.check small { display: block; font-weight: 400; color: var(--ink-soft); }
+.review-lead { font-weight: 600; }
+.review-line { margin: 0.9rem 0 0; }
+@media (min-width: 1100px) { #home .home-tools, #home #reminders { grid-column: 1 / -1; margin: 0; } }
