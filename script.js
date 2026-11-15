@@ -20,7 +20,8 @@
   // Marks data that has been through the relationship check (bill <-> payment links etc.)
   var RELATIONS_VERSION = 2;
 
-  var PAGES = ["home", "money", "budgets", "bills", "goals", "more"];
+  var PAGES = ["home", "money", "budgets", "bills", "goals", "debts", "more"];
+  var DEBT_CATEGORY = "__debt__";   // marks expenses that are debt payments (not a user category)
   var DEFAULT_PAGE = "home";
 
   var CURRENCIES = ["USD", "EUR", "GBP", "PKR", "INR", "AED", "SAR", "CAD", "AUD"];
@@ -311,7 +312,8 @@
       bills: [],
       recurring: [],
       goals: [],
-      budgets: []
+      budgets: [],
+      debts: []
     };
   }
 
@@ -335,7 +337,7 @@
       });
     }
 
-    ["categories", "transactions", "bills", "goals", "budgets", "recurring"].forEach(function (key) {
+    ["categories", "transactions", "bills", "goals", "budgets", "recurring", "debts"].forEach(function (key) {
       ensureIds(d[key]);
     });
 
@@ -346,6 +348,19 @@
       g.contributions.forEach(function (c) {
         if (isPlainObject(c)) { c.goalId = g.id; }
       });
+    });
+
+    // Debts: every payment has an id, and a debt payment expense must point at a real debt and payment
+    var debtPay = {};
+    d.debts.forEach(function (x) {
+      if (!isPlainObject(x)) { return; }
+      if (!Array.isArray(x.payments)) { x.payments = []; }
+      if (!isInt(x.paidBefore) || x.paidBefore < 0) { x.paidBefore = 0; }
+      ensureIds(x.payments);
+      x.payments.forEach(function (p) { if (isPlainObject(p)) { debtPay[p.id] = x.id; } });
+    });
+    d.transactions.forEach(function (t) {
+      if (isPlainObject(t) && t.debtId && debtPay[t.debtPaymentId] !== t.debtId) { t.debtId = ""; t.debtPaymentId = ""; }
     });
 
     // Bills <-> payment expenses
@@ -404,7 +419,7 @@
 
   function normalizeData(d) {
     fillMissing(d, createDefaultData());
-    ["categories", "transactions", "bills", "recurring", "goals", "budgets"].forEach(function (key) {
+    ["categories", "transactions", "bills", "recurring", "goals", "budgets", "debts"].forEach(function (key) {
       if (!Array.isArray(d[key])) {
         d[key] = [];
       }
@@ -493,7 +508,7 @@
      version of the app that was opened once and never used. It is safe to show the
      Welcome screen for it, and nothing is deleted. Any real data returns false. */
   function isUntouchedData(p) {
-    var lists = ["transactions", "bills", "goals", "budgets", "recurring"];
+    var lists = ["transactions", "bills", "goals", "budgets", "recurring", "debts"];
     for (var i = 0; i < lists.length; i++) {
       var list = p[lists[i]];
       if (list !== undefined && (!Array.isArray(list) || list.length > 0)) { return false; }
@@ -539,7 +554,7 @@
         parsed.setupCompleted = !isUntouchedData(parsed);
       }
       // Anyone who already has saved records is a returning user: never show setup to them
-      if (parsed.setupCompleted !== true && ["transactions", "bills", "goals", "budgets", "recurring"].some(function (k) {
+      if (parsed.setupCompleted !== true && ["transactions", "bills", "goals", "budgets", "recurring", "debts"].some(function (k) {
         return Array.isArray(parsed[k]) && parsed[k].length > 0;
       })) {
         parsed.setupCompleted = true;
@@ -588,7 +603,7 @@
 
   function categoryName(id) {
     var c = getCategory(id);
-    return c ? c.name : "Uncategorized";
+    return c ? c.name : (id === DEBT_CATEGORY ? "Debt payments" : "Uncategorized");
   }
 
   function sortedCategories() {
@@ -867,6 +882,10 @@
         return bill.name;
       }
     }
+    if (t.debtId) {
+      var debt = findById(data.debts, t.debtId);
+      if (debt) { return debt.name; }
+    }
     return categoryName(t.categoryId);
   }
 
@@ -884,7 +903,9 @@
       subParts.push("Recurring");
     }
     var actions;
-    if (t.billId) {
+    if (t.debtId) {
+      actions = '<span class="badge badge-muted">Debt payment</span>';
+    } else if (t.billId) {
       actions = '<span class="badge badge-muted">Paid bill</span>' +
         btn("Delete", "delete-transaction", "btn-ghost btn-small btn-danger-text", t.id);
     } else {
@@ -1404,6 +1425,78 @@
   /* ---------------------------------------------------------
      15. RENDER: GOALS
      --------------------------------------------------------- */
+  /* ---------------------------------------------------------
+     Debt payoff. A payment is saved in its debt AND as one linked expense
+     (debtId + debtPaymentId), so Safe to Spend and monthly totals count it
+     exactly once. Debt balances themselves are never deducted.
+     --------------------------------------------------------- */
+  function debtPaidTotal(d, exceptId) {
+    var total = d.paidBefore || 0;
+    d.payments.forEach(function (p) { if (p.id !== exceptId) { total += p.amount; } });
+    return total;
+  }
+
+  function debtTx(p) {
+    for (var i = 0; i < data.transactions.length; i++) {
+      if (data.transactions[i].debtPaymentId === p.id) { return data.transactions[i]; }
+    }
+    return null;
+  }
+
+  function debtPayBtn(label, action, cls, d, p) {
+    return '<button type="button" class="btn ' + cls + '" data-action="' + action + '" data-id="' + esc(d.id) + '" data-pid="' + esc(p.id) + '">' + esc(label) + "</button>";
+  }
+
+  function renderDebts() {
+    $("debt-summary").hidden = data.debts.length === 0;
+    if (data.debts.length === 0) {
+      $("debts-list").innerHTML = emptyState(
+        "No debts added",
+        "Track what you owe and watch the balance go down. This is optional.",
+        btn("Add First Debt", "add-debt", "btn-add btn-small btn-secondary")
+      );
+      return;
+    }
+    var original = 0;
+    var paid = 0;
+    var remaining = 0;
+    data.debts.forEach(function (d) {
+      var owed = Math.max(d.original - debtPaidTotal(d, ""), 0);
+      original += d.original;
+      remaining += owed;
+      paid += d.original - owed;
+    });
+    var pct = original > 0 ? Math.min(paid / original * 100, 100) : 0;
+    $("debt-summary-body").innerHTML = '<div class="summary-row">' +
+      "<div><span>Original Debt</span><strong>" + formatMoney(original) + "</strong></div>" +
+      "<div><span>Total Paid</span><strong>" + formatMoney(paid) + "</strong></div>" +
+      "<div><span>Remaining</span><strong>" + formatMoney(remaining) + "</strong></div></div>" +
+      '<p class="field-hint">Overall progress: ' + Math.round(pct) + "%</p>" + progressHTML(pct, "");
+
+    $("debts-list").innerHTML = data.debts.map(function (d) {
+      var owed = Math.max(d.original - debtPaidTotal(d, ""), 0);
+      var done = d.original - owed;
+      var dpct = d.original > 0 ? Math.min(done / d.original * 100, 100) : 0;
+      var rows = [];
+      if (d.paidBefore > 0) {
+        rows.push('<div class="row"><div class="row-main"><div class="row-title">Paid before using Monetra</div></div><div class="row-amount">' + formatMoney(d.paidBefore) + "</div></div>");
+      }
+      d.payments.slice().sort(function (a, b) { return a.date < b.date ? 1 : -1; }).forEach(function (p) {
+        rows.push('<div class="row"><div class="row-main"><div class="row-title">' + esc(formatDate(p.date)) + '</div></div><div class="row-amount expense">' +
+          formatMoney(p.amount) + '</div><div class="row-actions">' + debtPayBtn("Edit", "edit-debt-payment", "btn-ghost btn-small", d, p) +
+          debtPayBtn("Delete", "delete-debt-payment", "btn-ghost btn-small btn-danger-text", d, p) + "</div></div>");
+      });
+      var history = rows.length ? '<details class="debt-history"><summary>Payment history (' + d.payments.length + ")</summary>" + rows.join("") + "</details>" : "";
+      return '<div class="item"><div class="item-head"><div class="item-title">' + esc(d.name) + '</div><span class="badge ' +
+        (owed === 0 ? "badge-ok" : "badge-muted") + '">' + (owed === 0 ? "Paid off" : Math.round(dpct) + "%") + "</span></div>" +
+        progressHTML(dpct, "") +
+        '<div class="item-stats"><span>Original<strong>' + formatMoney(d.original) + "</strong></span><span>Paid<strong>" + formatMoney(done) +
+        "</strong></span><span>Remaining<strong>" + formatMoney(owed) + "</strong></span></div>" + history +
+        '<div class="item-actions">' + (owed > 0 ? btn("Record Payment", "pay-debt", "btn-secondary btn-small btn-add", d.id) : "") +
+        btn("Edit", "edit-debt", "btn-ghost btn-small", d.id) + btn("Delete", "delete-debt", "btn-ghost btn-small btn-danger-text", d.id) + "</div></div>";
+    }).join("");
+  }
+
   function renderGoals(stats) {
     if (data.goals.length === 0) {
       $("goals-list").innerHTML = emptyState(
@@ -1502,6 +1595,7 @@
     renderBudgets(stats);
     renderBills(stats);
     renderGoals(stats);
+    renderDebts();
     renderMore();
   }
 
@@ -1884,7 +1978,7 @@
   function lastExpenseDefault(key) {
     var last = null;
     data.transactions.forEach(function (x) {
-      if (x.type === "expense" && !x.billId && x[key] && (!last || (x.createdAt || 0) > (last.createdAt || 0))) { last = x; }
+      if (x.type === "expense" && !x.billId && !x.debtId && x[key] && (!last || (x.createdAt || 0) > (last.createdAt || 0))) { last = x; }
     });
     if (key === "categoryId") { return last && getCategory(last.categoryId) ? last.categoryId : ""; }
     return last && last.method ? last.method : "Cash";
@@ -2209,6 +2303,119 @@
   }
 
   /* ---- Goal forms ---- */
+  function openDebtForm(id) {
+    var d = id ? findById(data.debts, id) : null;
+    if (id && !d) { return; }
+    openForm({
+      title: d ? "Edit Debt" : "Add Debt",
+      submitLabel: d ? "Save Changes" : "Add Debt",
+      fields: [
+        { name: "name", label: "Debt name", type: "text", value: d ? d.name : "", placeholder: "For example: Credit card", maxlength: 60 },
+        { name: "original", label: "Original amount", type: "money", value: d ? centsToInput(d.original) : "" },
+        { name: "paidBefore", label: "Already paid", type: "money", value: d && d.paidBefore ? centsToInput(d.paidBefore) : "", optional: true,
+          hint: "Optional. Money you paid before using Monetra. It is not added to your expenses." }
+      ],
+      onSubmit: function (v) {
+        if (!v.name) { return "Please enter a debt name."; }
+        var original = parseMoney(v.original);
+        if (original === null) { return "Please enter a valid original amount."; }
+        if (original <= 0) { return "The original amount must be more than 0."; }
+        var before = parseMoney(v.paidBefore === "" ? "0" : v.paidBefore);
+        if (before === null) { return "Please enter a valid amount already paid, or leave it empty."; }
+        var recorded = d ? debtPaidTotal(d, "") - (d.paidBefore || 0) : 0;
+        if (before + recorded > original) {
+          return "The amount paid cannot be more than the original debt" + (recorded ? " (payments you recorded add up to " + formatMoney(recorded) + ")" : "") + ".";
+        }
+        if (d) {
+          d.name = v.name; d.original = original; d.paidBefore = before;
+          commit("Debt updated.");
+        } else {
+          data.debts.push({ id: uid(), name: v.name, original: original, paidBefore: before, payments: [], createdAt: Date.now() });
+          commit("Debt added.");
+        }
+        return null;
+      }
+    });
+  }
+
+  function openDebtPaymentForm(debtId, payId) {
+    var d = findById(data.debts, debtId);
+    if (!d) { return; }
+    var p = payId ? findById(d.payments, payId) : null;
+    if (payId && !p) { return; }
+    var room = d.original - debtPaidTotal(d, p ? p.id : "");
+    if (room <= 0) { showToast("This debt is already paid off."); return; }
+    openForm({
+      title: p ? "Edit Payment" : "Record Payment",
+      submitLabel: p ? "Save Changes" : "Save Payment",
+      fields: [
+        { name: "amount", label: "Payment amount", type: "money", value: p ? centsToInput(p.amount) : "", hint: "Remaining balance: " + formatMoney(room) },
+        { name: "date", label: "Date", type: "date", value: p ? p.date : todayStr(), max: todayStr() }
+      ],
+      onSubmit: function (v) {
+        var amount = parseMoney(v.amount);
+        if (amount === null) { return "Please enter a valid payment amount."; }
+        if (amount <= 0) { return "The payment must be more than 0."; }
+        if (amount > room) { return "That is more than the remaining balance (" + formatMoney(room) + ")."; }
+        if (!isValidDate(v.date) || v.date > todayStr()) { return "Please choose a valid date that is not in the future."; }
+        var tx = p ? debtTx(p) : null;
+        var isNew = !p;
+        if (p) { p.amount = amount; p.date = v.date; } else { p = { id: uid(), amount: amount, date: v.date }; d.payments.push(p); }
+        if (tx) {
+          tx.amount = amount; tx.date = v.date;
+        } else {
+          data.transactions.push({ id: uid(), type: "expense", amount: amount, categoryId: DEBT_CATEGORY, date: v.date, method: "",
+            debtId: d.id, debtPaymentId: p.id, createdAt: Date.now() });
+        }
+        commit(isNew ? "Payment recorded." : "Payment updated.");
+        return null;
+      }
+    });
+  }
+
+  function deleteDebtPayment(debtId, payId) {
+    var d = findById(data.debts, debtId);
+    var p = d ? findById(d.payments, payId) : null;
+    if (!p) { return; }
+    openConfirm({
+      title: "Delete this payment?",
+      message: "The payment is removed from " + quoted(d.name) + " and from your expenses, so your balance and totals update right away.",
+      summary: [["Debt", d.name], ["Amount", formatMoney(p.amount)], ["Date", formatDate(p.date)]],
+      removes: ["The linked expense of " + formatMoney(p.amount)],
+      removesTitle: "Also removed",
+      keeps: ["The debt and its other payments", "All your other income and expenses"],
+      confirmLabel: "Delete payment",
+      onConfirm: function () {
+        var tx = debtTx(p);
+        if (tx) { removeById(data.transactions, tx.id); }
+        removeById(d.payments, p.id);
+        commit("Payment deleted.");
+      }
+    });
+  }
+
+  function deleteDebt(id) {
+    var d = findById(data.debts, id);
+    if (!d) { return; }
+    openConfirm({
+      title: "Delete this debt?",
+      message: "The debt and its payment history will be removed. Payments you already recorded stay in your expenses as Debt payments, so your totals do not change.",
+      summary: [["Debt", d.name], ["Original", formatMoney(d.original)], ["Payments recorded", String(d.payments.length)]],
+      removes: ["The debt " + quoted(d.name) + " and its payment history"],
+      removesTitle: "Removes",
+      keeps: ["Your recorded payments, kept as expenses", "All your other income and expenses"],
+      confirmLabel: "Delete debt",
+      onConfirm: function () {
+        d.payments.forEach(function (p) {
+          var tx = debtTx(p);
+          if (tx) { tx.debtId = ""; tx.debtPaymentId = ""; }
+        });
+        removeById(data.debts, d.id);
+        commit("Debt deleted.");
+      }
+    });
+  }
+
   function openGoalForm(id) {
     var g = id ? findById(data.goals, id) : null;
     if (id && !g) { return; }
@@ -2958,7 +3165,7 @@
     var d = parsed.data;
     if (typeof d.version !== "number" || d.version > DATA_VERSION) { return null; }
 
-    var lists = ["categories", "transactions", "bills", "goals", "budgets", "recurring"];
+    var lists = ["categories", "transactions", "bills", "goals", "budgets", "recurring", "debts"];
     for (var i = 0; i < lists.length; i++) {
       if (d[lists[i]] !== undefined && !Array.isArray(d[lists[i]])) { return null; }
     }
@@ -2974,6 +3181,13 @@
     (d.bills || []).forEach(function (b) {
       if (!isPlainObject(b) || typeof b.id !== "string" || typeof b.name !== "string" ||
           !isInt(b.amount) || !isValidDate(b.dueDate)) { ok = false; }
+    });
+    (d.debts || []).forEach(function (x) {
+      if (!isPlainObject(x) || typeof x.id !== "string" || typeof x.name !== "string" || !isInt(x.original) || x.original <= 0) { ok = false; return; }
+      if (x.payments !== undefined && !Array.isArray(x.payments)) { ok = false; return; }
+      (x.payments || []).forEach(function (p) {
+        if (!isPlainObject(p) || !isInt(p.amount) || p.amount <= 0 || !isValidDate(p.date)) { ok = false; }
+      });
     });
     (d.goals || []).forEach(function (g) {
       if (!isPlainObject(g) || typeof g.id !== "string" || typeof g.name !== "string" ||
@@ -3113,6 +3327,12 @@
         case "toggle-bill": toggleBill(id); break;
         case "edit-goal": openGoalForm(id); break;
         case "delete-goal": deleteGoal(id); break;
+        case "add-debt": openDebtForm(); break;
+        case "edit-debt": openDebtForm(id); break;
+        case "delete-debt": deleteDebt(id); break;
+        case "pay-debt": openDebtPaymentForm(id); break;
+        case "edit-debt-payment": openDebtPaymentForm(id, el.getAttribute("data-pid")); break;
+        case "delete-debt-payment": deleteDebtPayment(id, el.getAttribute("data-pid")); break;
         case "contribute-goal": openContributionForm(id); break;
         case "edit-category": openCategoryForm(id); break;
         case "delete-category": deleteCategory(id); break;
