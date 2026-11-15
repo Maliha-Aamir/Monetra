@@ -940,10 +940,6 @@
       var stage = d === 7 ? "7" : d === 3 ? "3" : d === 0 ? "0" : d < 0 ? "over:" + stats.today : "";
       if (stage) { notes.push({ key: b.id + ":" + stage, text: line }); }
     });
-    stats.budgets.forEach(function (b) {
-      if (b.status === "warn") { lines.push(b.name + " budget is at " + Math.round(b.pct) + "%. A gentle heads-up."); }
-      if (b.status === "over") { lines.push(b.name + " budget limit reached. You can adjust it any time."); }
-    });
     $("reminders").innerHTML = lines.map(function (l) { return "<p>" + esc(l) + "</p>"; }).join("");
     $("reminders").hidden = lines.length === 0;
     sendBrowserReminders(notes);
