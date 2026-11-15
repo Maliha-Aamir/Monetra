@@ -943,7 +943,7 @@
     var hour = new Date().getHours();
     var part = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
     var name = data.settings.name;
-    return name ? part + ", " + name + ". Manage Money. Find Your Focus." : "Manage Money. Find Your Focus.";
+    return part + (name ? ", " + name : "") + ".";
   }
 
   // Calm reminders for unpaid bills. Shown only while the app is open.
@@ -1013,7 +1013,7 @@
   function renderHome(stats) {
     renderCatchUp(stats);
     renderReminders(stats);
-    $("home-greeting").textContent = greetingText();
+    $("home-greeting").innerHTML = '<span class="greet-line">' + esc(greetingText()) + '</span><span class="greet-tag">Manage Money. Find Your Focus.</span>';
 
     $("safe-to-spend-amount").textContent = formatMoney(stats.safePerDay);
     $("safe-to-spend-total").textContent = formatMoney(Math.max(stats.available, 0));
