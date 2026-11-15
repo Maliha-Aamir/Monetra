@@ -1608,3 +1608,20 @@ body.focus-mode #home-goals, body.focus-mode #home-budgets, body.focus-mode #mon
 .debt-history .row:first-of-type { margin-top: 0.4rem; }
 #debt-summary-body .field-hint { margin: 0.8rem 0 0.35rem; }
 @media (max-width: 520px) { #main-nav a { font-size: 0.72rem; } }
+
+/* ---------- 24. Typography and content polish ---------- */
+h1, h2 { text-wrap: balance; }
+p, .empty-text, .field-hint { text-wrap: pretty; }
+h1 { font-size: clamp(1.6rem, 1.35rem + 1vw, 2rem); letter-spacing: -0.025em; }
+h2 { font-size: 1.125rem; }
+.page-sub { font-size: 0.98rem; }
+.greet-line { display: block; font-family: var(--font-head); font-size: clamp(1.15rem, 1.02rem + 0.7vw, 1.4rem); font-weight: 650; letter-spacing: -0.015em; line-height: 1.3; color: var(--ink); overflow-wrap: anywhere; }
+.greet-tag { display: block; margin-top: 0.2rem; font-size: clamp(0.85rem, 4.2vw, 1rem); line-height: 1.4; color: var(--ink-soft); white-space: nowrap; }
+#home .page-sub { margin-bottom: 0.25rem; }
+.row-amount, .item-stats strong, .summary-row strong, .badge, .safe-stats strong { font-variant-numeric: tabular-nums; }
+.row-title, .item-title { overflow-wrap: anywhere; }
+.card-head .btn, .collapse > summary .btn { white-space: nowrap; }
+.field-hint { font-size: 0.875rem; line-height: 1.45; }
+.empty-title { font-family: var(--font-head); }
+::placeholder { color: var(--ink-faint); opacity: 1; }
+.btn { letter-spacing: 0.005em; }
