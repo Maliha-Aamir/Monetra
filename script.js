@@ -1215,7 +1215,7 @@
       if (t.type === "income") { incomeTotal += t.amount; } else { expenseTotal += t.amount; }
     });
 
-    var html = '<p class="list-summary"><span>' + plural(rows.length, "transaction") + "</span><span>Income " +
+    var html = query ? "" : '<p class="list-summary"><span>' + plural(rows.length, "transaction") + "</span><span>Income " +
       formatMoney(incomeTotal) + " &middot; Spent " + formatMoney(expenseTotal) + "</span></p>";
     html += rows.slice(0, MAX_HISTORY_ROWS).map(transactionRowHTML).join("");
     if (rows.length > MAX_HISTORY_ROWS) {
@@ -1450,7 +1450,9 @@
     data.budgets.forEach(function (b) { bump(b.categoryId, "budget"); });
     data.recurring.forEach(function (r) { if (r.type === "expense") { bump(r.categoryId, "recurring"); } });
 
-    if (data.categories.length === 0) {
+    if (!$("categories-list")) {
+      // The category list is no longer on the page; new categories are added inside the forms.
+    } else if (data.categories.length === 0) {
       $("categories-list").innerHTML = emptyState("No categories", "Tap + Add Category to create your first one.");
     } else {
       $("categories-list").innerHTML = sortedCategories().map(function (c) {
