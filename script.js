@@ -51,6 +51,7 @@
   var currentForm = null;
   var formatters = {};
   var lastRenderDay = "";
+  var catchUpActive = false;   // true once, when someone returns after a few days away
   var reviewOffset = 0;   // 0 = this budget period, -1 = the one before, ...
 
   /* ---------------------------------------------------------
@@ -926,23 +927,74 @@
 
   // Calm reminders for unpaid bills. Shown only while the app is open.
   function renderReminders(stats) {
-    var over = [];
-    var due = [];
+    var lines = [];
+    var notes = [];
+    data.bills.filter(function (b) { return !b.paid; }).sort(function (a, b) {
+      return a.dueDate < b.dueDate ? -1 : 1;
+    }).forEach(function (b) {
+      var d = daysBetween(stats.today, b.dueDate);
+      if (d > 7) { return; }
+      var when = d < 0 ? "past due by " + plural(-d, "day") : d === 0 ? "due today" : "due in " + plural(d, "day");
+      var line = b.name + " is " + when + ".";
+      lines.push(line);
+      var stage = d === 7 ? "7" : d === 3 ? "3" : d === 0 ? "0" : d < 0 ? "over:" + stats.today : "";
+      if (stage) { notes.push({ key: b.id + ":" + stage, text: line }); }
+    });
+    stats.budgets.forEach(function (b) {
+      if (b.status === "warn") { lines.push(b.name + " budget is at " + Math.round(b.pct) + "%. A gentle heads-up."); }
+      if (b.status === "over") { lines.push(b.name + " budget limit reached. You can adjust it any time."); }
+    });
+    $("reminders").innerHTML = lines.map(function (l) { return "<p>" + esc(l) + "</p>"; }).join("");
+    $("reminders").hidden = lines.length === 0;
+    sendBrowserReminders(notes);
+  }
+
+  function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* ignore */ } }
+  function notifyEnabled() {
+    return typeof Notification !== "undefined" && Notification.permission === "granted" && lsGet("monetra.notify") === "1";
+  }
+
+  // Optional browser reminders: only after the user turns them on, only while the app is open, once per bill and stage
+  function sendBrowserReminders(notes) {
+    if (!notifyEnabled() || !storageWorks) { return; }
+    var sent = {};
+    try { sent = JSON.parse(lsGet("monetra.notified") || "{}"); } catch (e) { sent = {}; }
+    var changed = false;
+    notes.forEach(function (n) {
+      if (sent[n.key]) { return; }
+      sent[n.key] = todayStr();
+      changed = true;
+      try { new Notification("Monetra", { body: n.text }); } catch (e) { /* ignore */ }
+    });
+    Object.keys(sent).forEach(function (k) {
+      if (daysBetween(sent[k], todayStr()) > 30) { delete sent[k]; changed = true; }
+    });
+    if (changed) { lsSet("monetra.notified", JSON.stringify(sent)); }
+  }
+
+  // Calm overview shown once when someone returns after a few days. No counts of missed days.
+  function renderCatchUp(stats) {
+    var box = $("catchup");
+    if (!catchUpActive || (data.transactions.length === 0 && data.bills.length === 0)) { box.hidden = true; return; }
     var soon = [];
+    var over = [];
     data.bills.forEach(function (b) {
       if (b.paid) { return; }
       var d = daysBetween(stats.today, b.dueDate);
-      if (d < 0) { over.push(b.name); } else if (d === 0) { due.push(b.name); } else if (d <= 3) { soon.push(b.name); }
+      if (d < 0) { over.push(b.name); } else if (d <= 7) { soon.push(b.name + " (" + (d === 0 ? "today" : "in " + plural(d, "day")) + ")"); }
     });
-    var lines = [];
-    if (over.length) { lines.push("Past due: " + over.join(", ") + ". Paying these first keeps things simple."); }
-    if (due.length) { lines.push("Due today: " + due.join(", ") + "."); }
-    if (soon.length) { lines.push("Coming up in the next 3 days: " + soon.join(", ") + "."); }
-    $("reminders").innerHTML = lines.map(function (l) { return "<p>" + esc(l) + "</p>"; }).join("");
-    $("reminders").hidden = lines.length === 0;
+    box.innerHTML = "<h2>Welcome back</h2><p>Here is where things stand today.</p>" +
+      "<p><strong>Safe to Spend:</strong> " + esc(formatMoney(stats.safePerDay)) + " a day</p>" +
+      "<p><strong>Remaining:</strong> " + esc(formatMoney(Math.max(stats.available, 0))) + "</p>" +
+      (soon.length ? "<p><strong>Coming up:</strong> " + esc(soon.join(", ")) + "</p>" : "") +
+      (over.length ? "<p><strong>Past due:</strong> " + esc(over.join(", ")) + "</p>" : "") +
+      btn("Got it", "dismiss-catchup", "btn-secondary btn-small");
+    box.hidden = false;
   }
 
   function renderHome(stats) {
+    renderCatchUp(stats);
     renderReminders(stats);
     $("home-greeting").textContent = greetingText();
 
@@ -1041,19 +1093,6 @@
   /* ---------------------------------------------------------
      12. RENDER: MONEY (Income, Expenses, Recurring, History)
      --------------------------------------------------------- */
-  function expenseFoldHTML(t) {
-    var title = transactionTitle(t);
-    var parts = [formatDate(t.date)];
-    if (title !== categoryName(t.categoryId)) { parts.push(categoryName(t.categoryId)); }
-    if (t.method) { parts.push(t.method); }
-    if (t.recurringId) { parts.push("Recurring"); }
-    var acts = t.billId ? '<span class="badge badge-muted">Paid bill</span>' : btn("Edit", "edit-transaction", "btn-ghost btn-small", t.id);
-    acts += btn("Delete", "delete-transaction", "btn-ghost btn-small btn-danger-text", t.id);
-    return '<details class="row-fold"><summary><span class="row-title">' + esc(title) + '</span><span class="row-amount expense">-' +
-      formatMoney(t.amount) + "</span></summary>" + '<div class="row-sub">' + esc(parts.join(" \u00B7 ")) +
-      '</div><div class="row-actions fold-actions">' + acts + "</div></details>";
-  }
-
   function emptyAddBtn(type) {
     var any = data.transactions.some(function (t) { return t.type === type; });
     return btn((any ? "Add " : "Add First ") + (type === "income" ? "Income" : "Expense"),
@@ -1080,7 +1119,7 @@
 
     var html = '<p class="list-summary"><span>This period (' + esc(formatPeriod(stats.period)) +
       ")</span><strong>" + formatMoney(total) + "</strong></p>";
-    html += rows.slice(0, MAX_LIST_ROWS).map(type === "expense" ? expenseFoldHTML : transactionRowHTML).join("");
+    html += rows.slice(0, MAX_LIST_ROWS).map(transactionRowHTML).join("");
     if (rows.length > MAX_LIST_ROWS) {
       html += '<p class="muted">Showing the latest ' + MAX_LIST_ROWS + ". Open Transaction History below for everything.</p>";
     }
@@ -1453,6 +1492,7 @@
     $("pref-focus").checked = st.focusMode;
     $("pref-large").checked = st.largeText;
     $("pref-motion").checked = root.classList.contains("reduce-motion");
+    $("pref-notify").checked = notifyEnabled();
   }
 
   function renderAll() {
@@ -2668,6 +2708,20 @@
     }
     daySelect.innerHTML = html;
 
+    var notifyBox = $("pref-notify");
+    if (typeof Notification === "undefined") {
+      notifyBox.disabled = true;
+      notifyBox.nextElementSibling.querySelector("small").textContent = "Not available in this browser. In-app reminders still work.";
+    }
+    notifyBox.addEventListener("change", function () {
+      var box = this;
+      if (!box.checked) { lsSet("monetra.notify", "0"); return; }
+      Notification.requestPermission().then(function (p) {
+        if (p === "granted") { lsSet("monetra.notify", "1"); showToast("Browser reminders are on while Monetra is open."); }
+        else { box.checked = false; lsSet("monetra.notify", "0"); showToast("No permission given. In-app reminders still work."); }
+      });
+    });
+
     [["pref-focus", "focusMode"], ["pref-large", "largeText"], ["pref-motion", "reducedMotion"]].forEach(function (p) {
       $(p[0]).addEventListener("change", function () {
         data.settings[p[1]] = this.checked;
@@ -3071,6 +3125,18 @@
         case "restore-backup": $("restore-file").click(); break;
         case "skip-setup": completeSetup(false); break;
         case "reset-all": resetAllData(); break;
+        case "add-recurring":
+          openForm({
+            title: "Add Recurring",
+            submitLabel: "Next",
+            fields: [{ name: "kind", label: "What repeats?", type: "select", value: "expense", options: [{ value: "expense", label: "Expense" }, { value: "income", label: "Income" }] }],
+            onSubmit: function (v) {
+              setTimeout(function () { openRecurringForm(v.kind === "income" ? "income" : "expense"); }, 0);
+              return null;
+            }
+          });
+          break;
+        case "dismiss-catchup": catchUpActive = false; renderAll(); break;
         case "inline-category": {
           var box = el.nextElementSibling;
           box.hidden = !box.hidden;
@@ -3148,6 +3214,12 @@
       processRecurring();
       if (storageWorks) {
         saveData();
+      }
+
+      if (storageWorks) {
+        var prevOpen = lsGet("monetra.lastOpen");
+        if (prevOpen && /^\d{4}-\d{2}-\d{2}$/.test(prevOpen) && data.setupCompleted && daysBetween(prevOpen, todayStr()) >= 3) { catchUpActive = true; }
+        lsSet("monetra.lastOpen", todayStr());
       }
 
       setupSettings();
