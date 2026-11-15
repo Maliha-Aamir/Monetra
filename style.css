@@ -1588,13 +1588,14 @@ body.focus-mode #home-goals, body.focus-mode #home-budgets, body.focus-mode #mon
 #categories-section .button-row { margin: 0 0 0.5rem; }
 
 /* ---------- 21. Expense rows that expand, spending progress ---------- */
-.row-fold { padding: 0.7rem 0; border-bottom: 1px solid var(--border); }
-.row-fold:last-child { border-bottom: none; }
-.row-fold > summary { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; cursor: pointer; list-style: none; }
-.row-fold > summary::-webkit-details-marker { display: none; }
-.row-fold > summary::after { content: "\25BE"; margin-left: 0.25rem; color: var(--ink-soft); }
-.row-fold[open] > summary::after { content: "\25B4"; }
-.row-fold > summary .row-title { flex: 1; min-width: 0; }
-.row-fold .row-sub { margin-top: 0.35rem; }
-.fold-actions { margin: 0.25rem 0 0 -0.4rem; }
 #summary-progress .field-hint { margin: 0.8rem 0 0.35rem; }
+
+/* ---------- 22. Settings rows, section headings with actions ---------- */
+.collapse > summary h2 { margin-right: auto; }
+.setting-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.4rem 1rem; margin-bottom: 0.75rem; padding: 0.8rem 1rem; background: var(--white, #fff); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.setting-row > label { margin: 0; font-weight: 700; }
+.setting-row > input, .setting-row > select { width: auto; min-width: 12rem; max-width: 100%; margin: 0; font-weight: 600; color: var(--teal-800); border-color: var(--teal-600); }
+.setting-row > .field-hint { flex-basis: 100%; margin: 0; }
+.catchup h2 { margin: 0 0 0.3rem; }
+.catchup p { margin: 0.3rem 0; }
+.catchup .btn { margin-top: 0.5rem; }
