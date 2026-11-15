@@ -116,6 +116,7 @@
       <h1>Home</h1>
       <p id="home-greeting" class="page-sub"></p>
       <div class="home-tools"><button type="button" id="focus-toggle" class="btn btn-secondary btn-small" data-action="toggle-focus" aria-pressed="false">Focus Mode: Off</button></div>
+      <div id="catchup" class="reminders catchup" hidden></div>
       <div id="reminders" class="reminders" role="status" hidden></div>
 
       <div id="safe-to-spend-card" class="card">
@@ -184,11 +185,10 @@
       </div>
 
       <div id="expenses-section" class="card">
-        <div class="card-head">
-          <h2>Expenses</h2>
-          <button type="button" class="btn btn-add btn-small" data-action="add-expense">Add Expense</button>
-        </div>
-        <div id="expenses-list"></div>
+        <details class="collapse" id="expenses-details">
+          <summary><h2>Expenses</h2><button type="button" class="btn btn-add btn-small" data-action="add-expense">Add Expense</button></summary>
+          <div class="collapse-body"><div id="expenses-list"></div></div>
+        </details>
       </div>
 
       <div id="history-section" class="card">
@@ -242,12 +242,8 @@
       <h1>Budgets</h1>
 
       <div id="category-budgets-section" class="card">
-        <div class="card-head">
-          <h2>Category Budgets</h2>
-          <button type="button" class="btn btn-add btn-small" data-action="add-budget">Add Budget</button>
-        </div>
         <details class="collapse" open>
-          <summary><h2>Category budgets</h2></summary>
+          <summary><h2>Category Budgets</h2><button type="button" class="btn btn-add btn-small" data-action="add-budget">Add Budget</button></summary>
           <div class="collapse-body"><div id="budgets-list"></div></div>
         </details>
       </div>
@@ -312,11 +308,11 @@
         <h2>Settings</h2>
         <div id="settings-area">
           <form id="settings-form" novalidate>
-            <div class="field">
+            <div class="field setting-row">
               <label for="settings-name">Your name <span class="optional">(optional)</span></label>
               <input id="settings-name" type="text" maxlength="40" autocomplete="given-name">
             </div>
-            <div class="field">
+            <div class="field setting-row">
               <label for="settings-currency">Currency</label>
               <select id="settings-currency">
                 <option value="USD">USD - US Dollar</option>
@@ -331,7 +327,7 @@
               </select>
               <p class="field-hint">Changing currency only changes the symbol. Your amounts are not converted.</p>
             </div>
-            <div class="field">
+            <div class="field setting-row">
               <label for="settings-day">Month start day</label>
               <select id="settings-day"></select>
               <p class="field-hint">The day your budget month begins, for example the day you get paid.</p>
@@ -341,6 +337,7 @@
               <label class="check"><input type="checkbox" id="pref-focus"><span>Focus Mode<small>Home shows only Safe to Spend, what is left and upcoming bills.</small></span></label>
               <label class="check"><input type="checkbox" id="pref-large"><span>Larger Text<small>Makes text bigger across the app.</small></span></label>
               <label class="check"><input type="checkbox" id="pref-motion"><span>Reduced Motion<small>Turns off animations. Follows your device setting until you change it here.</small></span></label>
+              <label class="check"><input type="checkbox" id="pref-notify"><span>Browser reminders<small>Optional. Works only while Monetra is open in your browser.</small></span></label>
               <p class="field-hint">These switches save instantly on this device.</p>
             </fieldset>
             <button type="submit" class="btn btn-primary">Save Settings</button>
@@ -353,6 +350,7 @@
           <summary><h2>Manage Recurring</h2></summary>
           <div class="collapse-body">
             <p class="muted">A recurring entry adds a real income or expense on each date. Pause it any time. Add one with the Repeat option when you record income or an expense.</p>
+            <div class="button-row"><button type="button" class="btn btn-add btn-small" data-action="add-recurring">Add Recurring</button></div>
             <div id="recurring-list"></div>
           </div>
         </details>
