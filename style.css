@@ -1592,7 +1592,7 @@ body.focus-mode #home-goals, body.focus-mode #home-budgets, body.focus-mode #mon
 #summary-progress .field-hint { margin: 0.8rem 0 0.35rem; }
 
 /* ---------- 22. Settings rows, section headings with actions ---------- */
-.collapse > summary h2 { margin-right: auto; }
+.collapse > summary h2 { margin-right: auto; min-width: 0; }
 .setting-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.4rem 1rem; margin-bottom: 0.75rem; padding: 0.8rem 1rem; background: var(--white, #fff); border: 1px solid var(--border); border-radius: var(--radius-sm); }
 .setting-row > label { margin: 0; font-weight: 700; }
 .setting-row > input, .setting-row > select { width: auto; min-width: 12rem; max-width: 100%; margin: 0; font-weight: 600; color: var(--teal-800); border-color: var(--teal-600); }
@@ -1617,10 +1617,10 @@ h2 { font-size: 1.125rem; }
 .page-sub { font-size: 0.98rem; }
 .greet-line { display: block; font-family: var(--font-head); font-size: clamp(1.15rem, 1.02rem + 0.7vw, 1.4rem); font-weight: 650; letter-spacing: -0.015em; line-height: 1.3; color: var(--ink); overflow-wrap: anywhere; }
 .greet-tag { display: block; margin-top: 0.2rem; font-size: clamp(0.85rem, 4.2vw, 1rem); line-height: 1.4; color: var(--ink-soft); white-space: nowrap; }
-#home .page-sub { margin-bottom: 0.25rem; }
+@media (min-width: 1100px) { #home .page-sub { margin-bottom: 0.25rem; } }
 .row-amount, .item-stats strong, .summary-row strong, .badge, .safe-stats strong { font-variant-numeric: tabular-nums; }
 .row-title, .item-title { overflow-wrap: anywhere; }
-.card-head .btn, .collapse > summary .btn { white-space: nowrap; }
+.card-head .btn { white-space: nowrap; }
 .field-hint { font-size: 0.875rem; line-height: 1.45; }
 .empty-title { font-family: var(--font-head); }
 ::placeholder { color: var(--ink-faint); opacity: 1; }
