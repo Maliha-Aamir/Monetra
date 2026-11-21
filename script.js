@@ -356,6 +356,7 @@
       if (!isPlainObject(x)) { return; }
       if (!Array.isArray(x.payments)) { x.payments = []; }
       if (!isInt(x.paidBefore) || x.paidBefore < 0) { x.paidBefore = 0; }
+      if (x.interestRate !== undefined && x.interestRate !== null && !isValidRate(x.interestRate)) { x.interestRate = null; }
       ensureIds(x.payments);
       x.payments.forEach(function (p) { if (isPlainObject(p)) { debtPay[p.id] = x.id; } });
     });
@@ -1436,6 +1437,26 @@
     return total;
   }
 
+  // Interest rate is informational only. It is never used in any balance or payment calculation.
+  // Stored as a plain number of percent (5.5 = 5.5%), or null when not set.
+  function isValidRate(v) {
+    return typeof v === "number" && isFinite(v) && v >= 0 && v <= 100;
+  }
+
+  // Returns null for an empty field, a number for a valid rate, or undefined for an invalid entry.
+  function parseInterestRate(text) {
+    var cleaned = String(text).replace(/\s/g, "");
+    if (cleaned === "") { return null; }
+    cleaned = cleaned.replace(/%$/, "");
+    if (!/^(\d+(\.\d{1,2})?|\.\d{1,2})$/.test(cleaned)) { return undefined; }
+    var n = parseFloat(cleaned);
+    return isValidRate(n) ? n : undefined;
+  }
+
+  function formatRate(v) {
+    return isValidRate(v) ? String(v) + "%" : "Not set";
+  }
+
   function debtTx(p) {
     for (var i = 0; i < data.transactions.length; i++) {
       if (data.transactions[i].debtPaymentId === p.id) { return data.transactions[i]; }
@@ -1491,7 +1512,7 @@
         (owed === 0 ? "badge-ok" : "badge-muted") + '">' + (owed === 0 ? "Paid off" : Math.round(dpct) + "%") + "</span></div>" +
         progressHTML(dpct, "") +
         '<div class="item-stats"><span>Original<strong>' + formatMoney(d.original) + "</strong></span><span>Paid<strong>" + formatMoney(done) +
-        "</strong></span><span>Remaining<strong>" + formatMoney(owed) + "</strong></span></div>" + history +
+        "</strong></span><span>Remaining<strong>" + formatMoney(owed) + "</strong></span><span>Interest Rate<strong>" + esc(formatRate(d.interestRate)) + "</strong></span></div>" + history +
         '<div class="item-actions">' + (owed > 0 ? btn("Record Payment", "pay-debt", "btn-secondary btn-small btn-add", d.id) : "") +
         btn("Edit", "edit-debt", "btn-ghost btn-small", d.id) + btn("Delete", "delete-debt", "btn-ghost btn-small btn-danger-text", d.id) + "</div></div>";
     }).join("");
@@ -1656,7 +1677,7 @@
         (f.max ? ' max="' + esc(f.max) + '"' : "") + ">";
     } else {
       var listAttr = f.suggestions && f.suggestions.length ? ' list="dl-' + f.name + '"' : "";
-      var modeAttr = f.type === "money" ? ' inputmode="decimal" autocomplete="off"' : ' autocomplete="off"';
+      var modeAttr = (f.type === "money" || f.type === "percent") ? ' inputmode="decimal" autocomplete="off"' : ' autocomplete="off"';
       control = '<input id="' + id + '" type="text"' + modeAttr + listAttr + ' maxlength="' + (f.maxlength || 40) +
         '" value="' + esc(value) + '" placeholder="' + esc(f.placeholder || (f.type === "money" ? "0.00" : "")) + '">';
       if (listAttr) {
@@ -2313,7 +2334,10 @@
         { name: "name", label: "Debt name", type: "text", value: d ? d.name : "", placeholder: "For example: Credit card", maxlength: 60 },
         { name: "original", label: "Original amount", type: "money", value: d ? centsToInput(d.original) : "" },
         { name: "paidBefore", label: "Already paid", type: "money", value: d && d.paidBefore ? centsToInput(d.paidBefore) : "", optional: true,
-          hint: "Optional. Money you paid before using Monetra. It is not added to your expenses." }
+          hint: "Optional. Money you paid before using Monetra. It is not added to your expenses." },
+        { name: "interestRate", label: "Interest Rate", type: "percent", value: d && isValidRate(d.interestRate) ? String(d.interestRate) : "", optional: true,
+          placeholder: "e.g. 5%", maxlength: 8,
+          hint: "Optional. For your information only. It is not added to your balance." }
       ],
       onSubmit: function (v) {
         if (!v.name) { return "Please enter a debt name."; }
@@ -2322,15 +2346,17 @@
         if (original <= 0) { return "The original amount must be more than 0."; }
         var before = parseMoney(v.paidBefore === "" ? "0" : v.paidBefore);
         if (before === null) { return "Please enter a valid amount already paid, or leave it empty."; }
+        var rate = parseInterestRate(v.interestRate);
+        if (rate === undefined) { return "Please enter a valid interest rate from 0 to 100 (for example 5 or 5.5), or leave it empty."; }
         var recorded = d ? debtPaidTotal(d, "") - (d.paidBefore || 0) : 0;
         if (before + recorded > original) {
           return "The amount paid cannot be more than the original debt" + (recorded ? " (payments you recorded add up to " + formatMoney(recorded) + ")" : "") + ".";
         }
         if (d) {
-          d.name = v.name; d.original = original; d.paidBefore = before;
+          d.name = v.name; d.original = original; d.paidBefore = before; d.interestRate = rate;
           commit("Debt updated.");
         } else {
-          data.debts.push({ id: uid(), name: v.name, original: original, paidBefore: before, payments: [], createdAt: Date.now() });
+          data.debts.push({ id: uid(), name: v.name, original: original, paidBefore: before, interestRate: rate, payments: [], createdAt: Date.now() });
           commit("Debt added.");
         }
         return null;
